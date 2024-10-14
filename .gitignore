@@ -1,0 +1,7 @@
+esp-idf
+.espressif
+tuya_open_sdk/build
+.target
+tuya_open_sdk/sdkconfig
+tuya_open_sdk/sdkconfig.old
+tuya_open_sdk/sdkconfig.defaults
