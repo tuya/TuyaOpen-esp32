@@ -1,5 +1,6 @@
 esp-idf
 .espressif
+esp-gitee-tools
 tuya_open_sdk/build
 .target
 tuya_open_sdk/sdkconfig
