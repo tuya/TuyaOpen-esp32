@@ -2,6 +2,7 @@ esp-idf
 .espressif
 esp-gitee-tools
 tuya_open_sdk/build
+tuya_open_sdk/.cache
 .target
 tuya_open_sdk/sdkconfig
 tuya_open_sdk/sdkconfig.old

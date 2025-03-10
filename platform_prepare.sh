@@ -72,7 +72,7 @@ function disable_mirror()
 function download_esp_idf()
 {
     echo "download esp-idf ..."
-    git clone --recursive https://github.com/espressif/esp-idf -b v5.2.1 --depth=1 ${IDF_PATH}
+    git clone --recursive https://github.com/espressif/esp-idf -b v5.4 --depth=1 ${IDF_PATH}
     if [ $? -ne 0 ]; then
         return 1
     fi
