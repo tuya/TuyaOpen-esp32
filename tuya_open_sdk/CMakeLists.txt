@@ -8,3 +8,4 @@ set(EXTRA_COMPONENT_DIRS tuyaos_adapter)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(tuya_open_sdk)
+idf_build_set_property(COMPILE_OPTIONS "-Wno-error=incompatible-pointer-types" APPEND)

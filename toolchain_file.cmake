@@ -1,5 +1,5 @@
 if(${TOS_PROJECT_CHIP} STREQUAL esp32s3)
-    include(${PLATFORM_PATH}/tools/esp32_s3/toolchain_esp32.cmake)
+    include(${PLATFORM_PATH}/tools/esp32s3/toolchain_esp32s3.cmake)
 elseif(${TOS_PROJECT_CHIP} STREQUAL esp32c3)
     include(${PLATFORM_PATH}/tools/esp32c3/toolchain_esp32c3.cmake)
 elseif(${TOS_PROJECT_CHIP} STREQUAL esp32)

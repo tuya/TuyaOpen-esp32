@@ -145,6 +145,8 @@ if [ x"$TARGET" = x"esp32" ]; then
     cp -rf sdkconfig_esp32 sdkconfig.defaults
 elif [ x"$TARGET" = x"esp32c3" ]; then
     cp -rf sdkconfig_esp32c3 sdkconfig.defaults
+elif [ x"$TARGET" = x"esp32s3" ]; then
+    cp -rf sdkconfig_esp32s3 sdkconfig.defaults
 else
     echo "Target $TARGET not support"
     exit 1
