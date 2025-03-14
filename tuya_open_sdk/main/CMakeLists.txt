@@ -19,3 +19,8 @@ foreach(lib ${TUYAOS_LIBS_LIST})
     add_prebuilt_library(${lib} "${TUYA_OPENSDK_LIB_PATH}/lib${lib}.a" REQUIRES tuyaos_adapter mbedtls)
     target_link_libraries(${COMPONENT_LIB} PUBLIC ${lib})
 endforeach()
+
+target_include_directories(mbedcrypto
+    PUBLIC
+        $ENV{IDF_PATH}/components/mbedtls/port/mbedtls_rom
+    )

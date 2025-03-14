@@ -63,66 +63,26 @@ if [ "$USER_CMD" = "build" ]; then
     USER_CMD=all
 fi
 
-TOP_DIR=$(pwd)
+TOP_DIR=$(cd "$(dirname "$0")" && pwd)
 BULID_PATH=${TOP_DIR}/tuya_open_sdk/build
 APP_BIN_DIR=${OUTPUT_DIR}
 
 
-IDF_PATH=${TOP_DIR}/esp-idf
-IDF_TOOLS_PATH=${TOP_DIR}/.espressif
-
-export IDF_PATH
-export IDF_TOOLS_PATH
-
-if [ ! -d ${IDF_PATH} ]; then
-    echo "IDF_PATH is empty"
-    git clone --recursive https://github.com/espressif/esp-idf -b v5.2.1 --depth=1
-    if [ $? -ne 0 ]; then
-        echo "git clone esp-idf failed ..."
-        exit 1
-    else
-        cd ${IDF_PATH}
-        git submodule update --init --recursive
-        . ./install.sh all
-        cd -
-        
-        echo "git clone esp-idf success ..."
-    fi
+${TOP_DIR}/platform_prepare.sh $TARGET
+if [ $? -ne 0 ]; then
+    echo "platform_prepare.sh failed."
+    exit 1
 fi
 
-if [ ! -d ${IDF_TOOLS_PATH} ];then
-    echo "IDF_TOOLS_PATH is empty ..."
+if command -v idf.py &>/dev/null; then
+    echo "Use existing esp-idf tools."
+else
+    IDF_PATH=${TOP_DIR}/esp-idf
     cd ${IDF_PATH}
-    git submodule update --init --recursive
-    . ./install.sh all
+    . export.sh > /dev/null
     cd -
 fi
 
-cd ${IDF_PATH}
-. export.sh > /dev/null
-cd -
-
-CONTENT="
-#ifndef MBEDTLS_THREADING_ALT_H
-#define MBEDTLS_THREADING_ALT_H
-
-typedef struct mbedtls_threading_mutex_t {
-    void * mutex;
-    char is_valid;
-} mbedtls_threading_mutex_t;
-
-#endif /* threading_alt.h */
-"
-
-# 指定文件名
-FILENAME="threading_alt.h"
-if [ ! -f ${IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls/${FILENAME} ]; then
-    echo "======== file ${FILENAME} not exist"
-
-    echo -e "$CONTENT" > "$FILENAME"
-
-    mv -f ${FILENAME} ${IDF_PATH}/components/mbedtls/mbedtls/include/mbedtls
-fi
 
 echo "Build Target: $TARGET"
 
