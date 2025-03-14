@@ -1,8 +1,15 @@
 list_subdirectories(PLATFORM_PUBINC_1 ${PLATFORM_PATH}/tuya_open_sdk/tuyaos_adapter)
+
+set(ENV_IDF_PATH $ENV{IDF_PATH})
+set(IDF_PATH "${PLATFORM_PATH}/esp-idf")
+if(ENV_IDF_PATH)
+    set(IDF_PATH ${ENV_IDF_PATH})
+endif()
+message(STATUS "IDF_TOOLS_PATH: ${IDF_TOOLS_PATH}")
 set(PLATFORM_PUBINC_2 
-    ${PLATFORM_PATH}/esp-idf/components/mbedtls/mbedtls/include
-    ${PLATFORM_PATH}/esp-idf/components/mbedtls/port/include
-    ${PLATFORM_PATH}/esp-idf/components/soc/esp32c3/include
+    ${IDF_PATH}/components/mbedtls/mbedtls/include
+    ${IDF_PATH}/components/mbedtls/port/include
+    ${IDF_PATH}/components/soc/esp32c3/include
     ${PLATFORM_PATH}/tuya_open_sdk/build/config
     ${PLATFORM_PATH}/tools/${TOS_PROJECT_CHIP}
 )

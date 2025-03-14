@@ -4,9 +4,7 @@ set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR Linux)
 
 # set toolchain
-message(STATUS "[TOP] PLATFORM_PATH: ${PLATFORM_PATH}")
-
-set(TOOLCHAIN_DIR "${PLATFORM_PATH}/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin")
+set(TOOLCHAIN_DIR "${IDF_TOOLS_PATH}/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin")
 set(TOOLCHAIN_PRE "xtensa-esp32-elf-")
 
 set(CMAKE_AR "${TOOLCHAIN_DIR}/${TOOLCHAIN_PRE}ar")

@@ -1,3 +1,11 @@
+set(IDF_TOOLS_PATH "${PLATFORM_PATH}/.espressif")
+set(ENV_IDF_PATH $ENV{IDF_PATH})
+if(ENV_IDF_PATH)
+    set(IDF_TOOLS_PATH_RE "~/.espressif")
+    file(TO_CMAKE_PATH "${IDF_TOOLS_PATH_RE}" IDF_TOOLS_PATH)
+endif()
+# message(FATAL_ERROR "DEBUG>>>>>>>>>>>>IDF_TOOLS_PATH: ${IDF_TOOLS_PATH}")
+
 if(${TOS_PROJECT_CHIP} STREQUAL esp32s3)
     include(${PLATFORM_PATH}/tools/esp32s3/toolchain_esp32s3.cmake)
 elseif(${TOS_PROJECT_CHIP} STREQUAL esp32c3)
