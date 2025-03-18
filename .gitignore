@@ -7,3 +7,4 @@ tuya_open_sdk/.cache
 tuya_open_sdk/sdkconfig
 tuya_open_sdk/sdkconfig.old
 tuya_open_sdk/sdkconfig.defaults
+*.build/
