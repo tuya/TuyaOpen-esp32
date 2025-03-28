@@ -95,7 +95,9 @@ if command -v idf.py &>/dev/null; then
     echo "Use existing esp-idf tools."
 else
     IDF_PATH=${TOP_DIR}/esp-idf
+    IDF_TOOLS_PATH=${TOP_DIR}/.espressif
     export IDF_PATH
+    export IDF_TOOLS_PATH
 fi
 
 enable_mirror
