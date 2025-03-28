@@ -48,6 +48,34 @@ void tkl_system_free(void* ptr)
 }
 
 /**
+* @brief set memory
+*
+* @param[in] size: memory size
+*
+* @note This API is used to alloc memory of system.
+*
+* @return the memory address malloced
+*/
+void *tkl_system_memset(void* src, int ch, const SIZE_T n)
+{
+    return memset(src, ch, n);
+}
+
+/**
+* @brief Alloc memory of system
+*
+* @param[in] size: memory size
+*
+* @note This API is used to alloc memory of system.
+*
+* @return the memory address malloced
+*/
+void *tkl_system_memcpy(void* src, const void* dst, const SIZE_T n)
+{
+    return memcpy(src, dst, n);
+}
+
+/**
  * @brief Allocate and clear the memory
  * 
  * @param[in]       nitems      the numbers of memory block
@@ -120,5 +148,43 @@ int tkl_system_get_free_heap_size(void)
     // --- BEGIN: user implements ---
     return  (int)xPortGetFreeHeapSize();
     // --- END: user implements ---
+}
+
+/**
+* @brief Alloc psram memory of system
+*
+* @param[in] size: memory size
+*
+* @note ENABLE_EXT_RAM neeed define in tuyaos_kernel.config.
+*
+* @return the memory address malloced
+*/
+void *tkl_system_psram_malloc(SIZE_T size)
+{
+    return NULL;
+}
+
+/**
+* @brief Free memory of system
+*
+* @param[in] ptr: memory point
+*
+* @note This API is used to free memory of system.
+*
+* @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+*/
+void tkl_system_psram_free(void* ptr)
+{
+}
+
+/**
+ * @brief Re-allocate the memory
+ *
+ * @param[in]       nitems      source memory address
+ * @param[in]       size        the size after re-allocate
+ */
+void *tkl_system_psram_realloc(void* ptr, size_t size)
+{
+    return NULL;
 }
 

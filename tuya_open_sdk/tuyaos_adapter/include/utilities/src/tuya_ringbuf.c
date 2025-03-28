@@ -203,6 +203,11 @@ uint16_t tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, void *data, uint16_t len)
     return tmp_len + len;
 }
 
+uint32_t tuya_ring_buff_discard(TUYA_RINGBUFF_T ringbuff, uint32_t len)
+{
+    return 0;
+}
+
 uint16_t tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, void *data, uint16_t len)
 {
     uint16_t out;

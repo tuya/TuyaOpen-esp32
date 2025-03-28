@@ -25,6 +25,12 @@ typedef enum {
     OVERFLOW_COVERAGE_TYPE, ///< unread buff area will be overwritten when writing overflow
 }RINGBUFF_TYPE_E;
 
+#define TUYA_PSARM_SUPPORT
+#if defined(TUYA_PSARM_SUPPORT) && defined(TUYA_PSARM_SUPPORT)
+#define TY_RINGBUF_PSRAM_FLAG 0x80
+#define OVERFLOW_PSRAM_STOP_TYPE (OVERFLOW_STOP_TYPE | TY_RINGBUF_PSRAM_FLAG)
+#define OVERFLOW_PSRAM_COVERAGE_TYPE (OVERFLOW_COVERAGE_TYPE | TY_RINGBUF_PSRAM_FLAG)
+#endif
 
 /**
  * @brief ringbuff create
@@ -78,6 +84,21 @@ uint16_t tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff);
  * @return  length of the data read
  */
 uint16_t tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, void *data, uint16_t len);
+
+/**
+ * @brief Discards a specified number of bytes from the ring buffer.
+ *
+ * This function removes a specified length of data from the ring buffer,
+ * effectively advancing the read pointer by the given length. The discarded
+ * data is no longer accessible after this operation.
+ *
+ * @param[in] ringbuff The ring buffer instance to operate on.
+ * @param[in] len      The number of bytes to discard from the ring buffer.
+ *
+ * @return The actual number of bytes discarded. This may be less than the
+ *         requested length if the ring buffer contains fewer bytes than `len`.
+ */
+uint32_t tuya_ring_buff_discard(TUYA_RINGBUFF_T ringbuff, uint32_t len);
 
 /**
  * @brief ringbuff data peek 

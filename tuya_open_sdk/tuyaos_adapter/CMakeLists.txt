@@ -17,6 +17,9 @@ list(APPEND SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_uart.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_watchdog.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_wifi.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_audio.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_video_in.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/misc/ty_vad_app.c"
     )
 
 if(CONFIG_IDF_TARGET_ESP32S2)
@@ -43,6 +46,9 @@ set(include_dirs
     "include/watchdog"
     "include/wifi"
     "include/utilities/include"
+    "include/media"
+    "include/vad"
+    "include/vad/lib"
     )
 
 string(REPLACE " " ";" TUYAOS_HEADER_DIR_LIST $ENV{TUYAOS_HEADER_DIR})
