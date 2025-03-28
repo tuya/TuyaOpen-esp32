@@ -4,7 +4,7 @@ set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR Linux)
 
 # set toolchain
-set(TOOLCHAIN_DIR "${IDF_TOOLS_PATH}/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20241119/riscv32-esp-elf/bin")
+set(TOOLCHAIN_DIR "${IDF_TOOLS_PATH}/tools/riscv32-esp-elf/esp-14.2.0_20241119/riscv32-esp-elf/bin")
 set(TOOLCHAIN_PRE "riscv32-esp-elf-")
 
 set(CMAKE_AR "${TOOLCHAIN_DIR}/${TOOLCHAIN_PRE}ar")
