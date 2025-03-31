@@ -5,15 +5,12 @@ set -e
 
 PROJ_NAME=$1
 TARGET=$2
-CHIP=$3
-echo TARGET=$TARGET
-if [ x"$TARGET" = x"" ]; then
-    exit 1
-fi
+FRAMEWORK=$3
+CHIP=$4
 
- 
 echo PROJ_NAME=$PROJ_NAME
 echo TARGET=$TARGET
+echo FRAMEWORK=$FRAMEWORK
 echo CHIP=$CHIP
 
 TOP_DIR=$(dirname "$0")
@@ -21,7 +18,7 @@ echo $TOP_DIR
 
 echo "Start board build_setup ..."
 
-${TOP_DIR}/platform_prepare.sh $TARGET
+${TOP_DIR}/platform_prepare.sh $CHIP  # default esp32s3
 if [ $? -ne 0 ]; then
     echo "platform_prepare.sh failed."
     exit 1
