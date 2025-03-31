@@ -5,8 +5,9 @@ set -e
 TARGET=$1
 echo TARGET=$TARGET
 if [ x"$TARGET" = x"" ]; then
-    echo "Usage: <./ platform_prepare.sh esp32|esp32s2|esp32s3|esp32c2|esp32c3|esp32c6>"
-    exit 1
+    echo "Use default target: esp32s3"
+    TARGET=esp32s3
+    echo TARGET=$TARGET
 fi
 
 TOP_DIR=$(cd "$(dirname "$0")" && pwd)
