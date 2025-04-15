@@ -21,17 +21,16 @@
 
 #define MAX_UART_NUM 2
 
-#if 1
-#define TKL_UART_NUM_0_TXD  (GPIO_NUM_1)
-#define TKL_UART_NUM_0_RXD  (GPIO_NUM_3)
-#define TKL_UART_NUM_0_RTS  (UART_PIN_NO_CHANGE)
-#define TKL_UART_NUM_0_CTS  (UART_PIN_NO_CHANGE)
-#else
+#if (defined (UART_NUM0_TX_PIN)) && (defined (UART_NUM0_RX_PIN))
+#define TKL_UART_NUM_0_TXD  (UART_NUM0_TX_PIN)
+#define TKL_UART_NUM_0_RXD  (UART_NUM0_RX_PIN)
+#else  // default esp32s3
 #define TKL_UART_NUM_0_TXD  (GPIO_NUM_43)
 #define TKL_UART_NUM_0_RXD  (GPIO_NUM_44)
+#endif
+
 #define TKL_UART_NUM_0_RTS  (UART_PIN_NO_CHANGE)
 #define TKL_UART_NUM_0_CTS  (UART_PIN_NO_CHANGE)
-#endif
 
 
 #define TKL_UART_NUM_1_TXD  (GPIO_NUM_17)
@@ -148,6 +147,10 @@ OPERATE_RET tkl_uart_init(TUYA_UART_NUM_E port_id, TUYA_UART_BASE_CFG_T *cfg)
 	uart_cfg.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
 	uart_cfg.source_clk = UART_SCLK_DEFAULT;
     // uart_cfg.source_clk = UART_SCLK_XTAL;
+#if !SOC_UART_SUPPORT_SLEEP_RETENTION
+    uart_cfg.flags.allow_pd = 0;
+    uart_cfg.flags.backup_before_sleep = 0;
+#endif
 
     if (UART_NUM_1 == uart_num) {
         uart_txd = TKL_UART_NUM_1_TXD;
