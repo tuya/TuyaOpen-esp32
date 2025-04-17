@@ -93,10 +93,26 @@ cd tuya_open_sdk
 if [ "${USER_CMD}" = "clean" ]; then
     idf.py clean
     rm -rf .target
+    rm -rf .app
     exit 0
 elif [ "${USER_CMD}" = "menuconfig" ]; then
     idf.py menuconfig
     exit 0
+fi
+
+# app check
+if [ -f ${TOP_DIR}/.app ]; then
+    OLD_APP_BIN_NAME=$(cat ${TOP_DIR}/.app)
+    echo "OLD_APP_BIN_NAME: ${OLD_APP_BIN_NAME}"
+fi
+
+echo ${APP_BIN_NAME} > ${TOP_DIR}/.app
+if [ "$OLD_APP_BIN_NAME" != "$APP_BIN_NAME" ]; then
+    rm -rf build
+    echo "set-target ${TARGET}"
+    idf.py set-target ${TARGET}
+    rm -rf sdkconfig
+    rm -rf sdkconfig.old
 fi
 
 if [ -f ${TOP_DIR}/.target ]; then
