@@ -13,6 +13,17 @@ fi
 TOP_DIR=$(cd "$(dirname "$0")" && pwd)
 echo $TOP_DIR
 
+if [ -f ${TOP_DIR}/.prepare ]; then
+    OLD_TARGET=$(cat ${TOP_DIR}/.prepare)
+    echo "old target: ${OLD_TARGET}"
+    if [ x"${TARGET}" == x"${OLD_TARGET}" ] ; then
+        echo "Use existing platform prepare."
+        exit 0
+    fi
+
+    rm -rf .prepare
+fi
+
 echo "Start platform prepare ..."
 
 rm -rf ${TOP_DIR}/.target
@@ -130,5 +141,7 @@ if [ $? -ne 0 ]; then
 fi
 
 disable_mirror
+
+echo ${TARGET} > ${TOP_DIR}/.prepare
 
 echo "Run platform prepare success ..."
