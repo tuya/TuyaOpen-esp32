@@ -9,3 +9,5 @@ tuya_open_sdk/sdkconfig.old
 tuya_open_sdk/sdkconfig.defaults
 *.build/
 *.using_config
+.app
+.prepare
