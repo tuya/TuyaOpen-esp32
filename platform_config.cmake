@@ -9,9 +9,8 @@ message(STATUS "IDF_TOOLS_PATH: ${IDF_TOOLS_PATH}")
 set(PLATFORM_PUBINC_2 
     ${IDF_PATH}/components/mbedtls/mbedtls/include
     ${IDF_PATH}/components/mbedtls/port/include
-    ${IDF_PATH}/components/soc/esp32c3/include
+    ${IDF_PATH}/components/soc/${TOS_PROJECT_CHIP}/include
     ${PLATFORM_PATH}/tuya_open_sdk/build/config
-    ${PLATFORM_PATH}/tools/${TOS_PROJECT_CHIP}
 )
 
 set(PLATFORM_PUBINC 

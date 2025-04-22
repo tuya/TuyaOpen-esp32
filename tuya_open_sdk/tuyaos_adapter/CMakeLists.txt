@@ -45,11 +45,15 @@ set(include_dirs
     "include/utilities/include"
     )
 
-string(REPLACE " " ";" TUYAOS_HEADER_DIR_LIST $ENV{TUYAOS_HEADER_DIR})
+if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
 
-foreach(head ${TUYAOS_HEADER_DIR_LIST})
-    list(APPEND include_dirs ${head})
-endforeach()
+    string(REPLACE " " ";" TUYAOS_HEADER_DIR_LIST $ENV{TUYAOS_HEADER_DIR})
+
+    foreach(head ${TUYAOS_HEADER_DIR_LIST})
+        list(APPEND include_dirs ${head})
+    endforeach()
+
+endif()
 
 # message(STATUS "TUYAOS_ADAPTER_INCLUDE_DIRS: ${include_dirs}")
 
