@@ -27,7 +27,8 @@
 void *tkl_system_malloc(size_t size)
 {
     // --- BEGIN: user implements ---
-    return pvPortMalloc(size);
+    // return pvPortMalloc(size);
+    return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
     // --- END: user implements ---
 }
 
@@ -43,7 +44,8 @@ void *tkl_system_malloc(size_t size)
 void tkl_system_free(void* ptr)
 {
     // --- BEGIN: user implements ---
-    vPortFree(ptr);
+    // vPortFree(ptr);
+    free(ptr);
     // --- END: user implements ---
 }
 
@@ -122,3 +124,23 @@ int tkl_system_get_free_heap_size(void)
     // --- END: user implements ---
 }
 
+void *tkl_system_psram_malloc(size_t size)
+{
+    // --- BEGIN: user implements ---
+    // return tkl_system_malloc(size);
+    return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+    // --- END: user implements ---
+}
+
+void tkl_system_psram_free(void* ptr)
+{
+    // tkl_system_free(ptr);
+    free(ptr);
+}
+
+int tkl_system_psram_get_free_heap_size(void)
+{
+    // --- BEGIN: user implements ---
+    return (int)heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    // --- END: user implements ---
+}

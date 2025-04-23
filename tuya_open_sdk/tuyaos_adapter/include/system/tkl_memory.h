@@ -67,6 +67,12 @@ void *tkl_system_realloc(void* ptr, size_t size);
 */
 int tkl_system_get_free_heap_size(void);
 
+void *tkl_system_psram_malloc(size_t size);
+
+void tkl_system_psram_free(void* ptr);
+
+int tkl_system_psram_get_free_heap_size(void);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

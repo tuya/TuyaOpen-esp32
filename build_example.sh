@@ -79,6 +79,7 @@ fi
 TOP_DIR=$(cd "$(dirname "$0")" && pwd)
 BULID_PATH=${TOP_DIR}/tuya_open_sdk/build
 APP_BIN_DIR=${OUTPUT_DIR}
+export TUYAOS_BOARD_PATH=$TOP_DIR/../../boards/ESP32
 
 
 ${TOP_DIR}/platform_prepare.sh $TARGET
@@ -165,11 +166,9 @@ cp -rf ${BULID_PATH}/tuya_open_sdk.bin ${APP_BIN_DIR}/${APP_BIN_NAME}.bin
 #	echo "BULID_PATH=${BULID_PATH}"
 get_python_version
 
-${PYTHON_CMD} ${TOP_DIR}/tools/$TARGET/image_gen.py \
-    ${APP_BIN_DIR}/bootloader.bin \
-    ${APP_BIN_DIR}/partition-table.bin \
-    ${APP_BIN_DIR}/ota_data_initial.bin \
-    ${APP_BIN_DIR}/${APP_BIN_NAME}.bin \
+${PYTHON_CMD} ${TOP_DIR}/tools/gen_image.py \
+    ${TARGET} \
+    ${BULID_PATH} \
     ${APP_BIN_DIR}/${APP_BIN_NAME}_QIO_${APP_VERSION}.bin
 
 cp -rf ${APP_BIN_DIR}/${APP_BIN_NAME}.bin ${APP_BIN_DIR}/${APP_BIN_NAME}_UA_${APP_VERSION}.bin

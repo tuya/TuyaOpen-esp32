@@ -19,6 +19,8 @@ extern "C" {
 typedef void* TKL_THREAD_HANDLE;
 typedef void (*THREAD_FUNC_T)(void*);
 
+#define tkl_thread_create_in_psram tkl_thread_create
+
 /**
 * @brief Create thread
 *
