@@ -68,7 +68,7 @@ elif [ "${USER_CMD}" = "clean" ]; then
     
     rm -rf sdkconfig
     rm -rf sdkconfig.old
-    rm sdkconfig.defaults
+    rm -rf sdkconfig.defaults
 
     rm -rf .target
     rm -rf .app
