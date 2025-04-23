@@ -1,13 +1,17 @@
 set(TUYAOS_ADAPTER_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 # message(STATUS "TUYAOS_ADAPTER_DIR: ${TUYAOS_ADAPTER_DIR}")
 
-file(GLOB_RECURSE SOURCES 
+file(GLOB_RECURSE SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/audio/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/system/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.c")
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.c"
+    )
 
-list(APPEND SOURCES 
+list(APPEND SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_adc.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_flash.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s_watcher.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_network.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_ota.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_pin.c"
@@ -29,6 +33,7 @@ set(include_dirs
     "include/adc"
     "include/bluetooth"
     "include/flash"
+    "include/i2s"
     "include/gpio"
     "include/hci"
     "include/init/include"
@@ -43,20 +48,25 @@ set(include_dirs
     "include/watchdog"
     "include/wifi"
     "include/utilities/include"
+    "include/vad"
+    "include/asr"
     )
 
-if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
+string(REPLACE " " ";" TUYAOS_HEADER_DIR_LIST $ENV{TUYAOS_HEADER_DIR})
 
-    string(REPLACE " " ";" TUYAOS_HEADER_DIR_LIST $ENV{TUYAOS_HEADER_DIR})
+foreach(head ${TUYAOS_HEADER_DIR_LIST})
+    list(APPEND include_dirs ${head})
+endforeach()
 
-    foreach(head ${TUYAOS_HEADER_DIR_LIST})
-        list(APPEND include_dirs ${head})
-    endforeach()
-
+if(NOT "$ENV{TUYAOS_BOARD_PATH}" STREQUAL "")
+    if(EXISTS "$ENV{TUYAOS_BOARD_PATH}/common/CMakeLists.txt")
+        include("$ENV{TUYAOS_BOARD_PATH}/common/CMakeLists.txt")
+        list(APPEND SOURCES ${BOARD_SRC})
+        list(APPEND include_dirs ${BOARD_INC})
+    endif()
 endif()
 
 # message(STATUS "TUYAOS_ADAPTER_INCLUDE_DIRS: ${include_dirs}")
 
 idf_component_register(SRCS "${SOURCES}"
-                    INCLUDE_DIRS "${include_dirs}" REQUIRES mbedtls nvs_flash bt esp_pm esp_adc efuse soc driver app_update)
-                    
+                    INCLUDE_DIRS "${include_dirs}" REQUIRES lvgl esp_lvgl_port esp_lcd esp-sr esp_codec_dev mbedtls nvs_flash bt esp_pm esp_adc efuse soc driver app_update)

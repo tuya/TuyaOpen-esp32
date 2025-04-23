@@ -33,6 +33,10 @@ typedef unsigned long TIME_MS;
 typedef unsigned long TIME_S;
 typedef unsigned int TIME_T;
 
+#ifndef SIZEOF
+#define SIZEOF sizeof
+#endif
+
 #ifndef FALSE
 #define FALSE 0
 #endif
@@ -61,6 +65,7 @@ typedef int bool_t;
 #define false 0
 #endif
 
+typedef size_t SIZE_T;
 
 #ifndef MAX
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
@@ -119,12 +124,81 @@ typedef int bool_t;
 #define CNTR_OF(ptr, type, member) \
         ({(type *)( (char *)ptr - OFFSOF(type,member) );}) // continer of
 
+/* tuyaos definition of socket domain */
+typedef int SOCKET_DOMAIN;
+#define TY_PF_INET  TY_AF_INET
+#define TY_PF_INET6 TY_AF_INET6
+
+/* tuyaos definition of IP addr type */
+typedef uint8_t IP_ADDR_TYPE;
+#define TY_AF_INET          2
+#define TY_AF_INET6         10
+
+/* tuyaos definition of dns mode */
+typedef enum {
+    DNS_IPV4 = TY_AF_INET,
+    DNS_IPV6 = TY_AF_INET6,
+} DNS_MODE_E;
+
+typedef uint8_t NW_IP_TYPE;
+
+#define NW_IPV4         0
+#define NW_IPV6         1
+#define NW_IPV6_LL      2
+
+#if defined(ENABLE_IPv6) && (ENABLE_IPv6 == 1)
+#define IS_NW_IPV4_ADDR(ip) (TY_AF_INET == (ip)->type)
+#define IS_NW_IPV6_ADDR(ip) (TY_AF_INET6 == (ip)->type)
+
+typedef struct {
+    char ip[16];    /* ip addr:  xxx.xxx.xxx.xxx  */
+    char mask[16];  /* net mask: xxx.xxx.xxx.xxx  */
+    char gw[16];    /* gateway:  xxx.xxx.xxx.xxx  */
+    char islinklocal;
+} NW_IP4_S;
+
+typedef struct {
+    char ip[40];    /* ip6 addr:  xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx */
+    char islinklocal;
+} NW_IP6_S;
+
+typedef struct {
+    #define nwipstr        addr.ip4.ip
+    #define nwmaskstr      addr.ip4.mask
+    #define nwgwstr        addr.ip4.gw
+    union {
+        NW_IP4_S ip4;
+        NW_IP6_S ip6;
+    } addr;
+    IP_ADDR_TYPE type;
+} NW_IP_S;
+
+/* tuyaos definition of IP addr */
+typedef struct {
+#define ipaddr4  u_addr.ip4
+#define ipaddr6  u_addr.ip6
+    union {
+        Uint  ip6[4];
+        Uint  ip4;
+    } u_addr;
+    IP_ADDR_TYPE type;
+    BOOL_T dhcpen;  /* enable dhcp or not */
+} TUYA_IP_ADDR_T;
+
+#define IPADDR4_FMT           "%d.%d.%d.%d"
+#define IPADDR4_PR(__addr)    (UINT8_T)((__addr)->ipaddr4 >> 24), (UINT8_T)((__addr)->ipaddr4 >> 16), (UINT8_T)((__addr)->ipaddr4 >> 8), (__addr)->ipaddr4 & 0xFF
+#else
 typedef struct
 {
     char ip[16];    /* ip addr:  xxx.xxx.xxx.xxx  */
     char mask[16];  /* net mask: xxx.xxx.xxx.xxx  */
     char gw[16];    /* gateway:  xxx.xxx.xxx.xxx  */
-}NW_IP_S;
+    char dns[16];    /* dns server:  xxx.xxx.xxx.xxx  */
+    BOOL_T dhcpen;  /* enable dhcp or not */
+} NW_IP_S;
+/* tuyaos definition of IP addr */
+typedef uint32_t TUYA_IP_ADDR_T;
+#endif
 
 #define MAC_ADDR_LEN 6
 typedef struct {
@@ -279,6 +353,7 @@ typedef enum {
     TUYA_FLASH_TYPE_BTL0 = 0,
     TUYA_FLASH_TYPE_BTL1,
     TUYA_FLASH_TYPE_STACK,
+    TUYA_FLASH_TYPE_APP_BIN,
     TUYA_FLASH_TYPE_APP,
     TUYA_FLASH_TYPE_OTA,
     TUYA_FLASH_TYPE_USER0,
@@ -286,11 +361,20 @@ typedef enum {
     TUYA_FLASH_TYPE_KV_DATA,
     TUYA_FLASH_TYPE_KV_SWAP,
     TUYA_FLASH_TYPE_KV_KEY,
-    TUYA_FLASH_TYPE_UF,    
+    TUYA_FLASH_TYPE_UF,
     TUYA_FLASH_TYPE_INFO,
     TUYA_FLASH_TYPE_KV_UF,
     TUYA_FLASH_TYPE_KV_PROTECT,
     TUYA_FLASH_TYPE_RCD,
+    TUYA_FLASH_TYPE_RSV0,
+    TUYA_FLASH_TYPE_RSV1,
+    TUYA_FLASH_TYPE_RSV2,
+    TUYA_FLASH_TYPE_RSV3,
+    TUYA_FLASH_TYPE_RSV4,
+    TUYA_FLASH_TYPE_RSV5,
+    TUYA_FLASH_TYPE_RSV6,
+    TUYA_FLASH_TYPE_RSV7,
+    TUYA_FLASH_TYPE_ALL,
     TUYA_FLASH_TYPE_MAX,
 } TUYA_FLASH_TYPE_E;
 
@@ -553,7 +637,17 @@ typedef enum {
 typedef enum {
     TUYA_GPIO_LEVEL_LOW = 0,
     TUYA_GPIO_LEVEL_HIGH,
+    TUYA_GPIO_LEVEL_NONE,
 } TUYA_GPIO_LEVEL_E;
+
+typedef enum {
+    TUYA_GPIO_WAKEUP_LOW = 0,
+    TUYA_GPIO_WAKEUP_HIGH,
+    TUYA_GPIO_WAKEUP_RISE,
+    TUYA_GPIO_WAKEUP_FALL,
+    TUYA_GPIO_WAKEUP_MAX,
+} TUYA_GPIO_WAKE_TYPE_E;
+
 
 /**
  * @brief gpio direction
@@ -911,18 +1005,18 @@ typedef struct {
 #define TUYA_IRUSR  0400    /* Read by owner.  */
 #define TUYA_IWUSR  0200    /* Write by owner.  */
 #define TUYA_IXUSR  0100    /* Execute by owner.  */
-     
-     
+
+
     // 缓冲区搜索起始位置类型
 #define TUYA_SEEK_SET   0   /* Seek from beginning of file.  */
 #define TUYA_SEEK_CUR   1   /* Seek from current position.  */
 #define TUYA_SEEK_END   2   /* Seek from end of file.  */
-     
+
 #define TUYA_R_OK       4
 #define TUYA_W_OK       2
 #define TUYA_X_OK       1
 #define TUYA_F_OK       0
- 
+
 typedef void* TUYA_DIR;
 typedef void* TUYA_FILEINFO;
 typedef void* TUYA_FILE; 
@@ -956,6 +1050,8 @@ typedef struct {
 
 typedef struct {
     uint32_t use_ratio;         // cpu used ratio
+    uint8_t chipid[32+1];       // max len 32
+    uint8_t chipidlen;
 } TUYA_CPU_INFO_T;
 
 #if OPERATING_SYSTEM != SYSTEM_NON_OS
@@ -1185,11 +1281,44 @@ typedef struct {
 } TUYA_WAKEUP_SOURCE_TIMER_T;
 
 /**
+ * @brief timer num
+ *
+ */
+typedef enum {
+    TUYA_RTC_NUM_0,         // RTC 0
+    TUYA_RTC_NUM_1,         // RTC 1
+    TUYA_RTC_NUM_2,         // RTC 2
+    TUYA_RTC_NUM_3,         // RTC 3
+    TUYA_RTC_NUM_4,         // RTC 4
+    TUYA_RTC_NUM_5,         // RTC 5
+    TUYA_RTC_NUM_MAX,
+} TUYA_RTC_NUM_E;
+
+typedef enum {
+    TUYA_RTC_MODE_ONCE = 0,
+    TUYA_RTC_MODE_PERIOD
+} TUYA_RTC_MODE_E;
+
+
+typedef void (*TUYA_RTC_ISR_CB)(TUYA_RTC_NUM_E port, void *args);
+/**
+ * @brief tuya wake source rtc
+ */
+typedef struct {
+    TUYA_RTC_NUM_E RTC_num;
+    TUYA_RTC_MODE_E mode;
+    uint32_t ms;
+    TUYA_RTC_ISR_CB cb;
+    void    *args;
+} TUYA_WAKEUP_SOURCE_RTC_T;
+
+/**
  * @brief tuya wake source
  */
 typedef enum {
     TUYA_WAKEUP_SOURCE_GPIO,
     TUYA_WAKEUP_SOURCE_TIMER,
+    TUYA_WAKEUP_SOURCE_RTC,
 } TUYA_WAKEUP_SOURCE_E;
 
 /**
@@ -1200,6 +1329,7 @@ typedef struct {
     union {
         TUYA_WAKEUP_SOURCE_GPIO_T gpio_param;
         TUYA_WAKEUP_SOURCE_TIMER_T timer_param;
+        TUYA_WAKEUP_SOURCE_RTC_T rtc_param;
     } wakeup_para;
 }TUYA_WAKEUP_SOURCE_BASE_CFG_T;
 
@@ -1235,6 +1365,12 @@ typedef enum {
     TRANS_SEND = 1,
 }TUYA_TRANS_TYPE_E;
 
+typedef enum {
+    TUYA_NETIF_STA_IDX = 0,
+    TUYA_NETIF_AP_IDX,
+    TUYA_NETIF_ETH_IDX,
+    TUYA_NETIF_NUM
+} TUYA_NETIF_TYPE_E;
 
 /* tuyaos definition of IP addr */
 typedef uint32_t TUYA_IP_ADDR_T;
