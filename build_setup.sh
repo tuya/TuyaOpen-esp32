@@ -41,8 +41,17 @@ function prepare_build()
     fi
 
     echo "Build CHIP: $CHIP"
+    rm -rf .prepare
+    rm -rf .target
+    rm -rf .app
 
     cd ${TOP_DIR}/tuya_open_sdk
+    
+    rm -rf sdkconfig.defaults
+    rm -rf sdkconfig
+    rm -rf sdkconfig.old
+
+
     if [ x"$CHIP" = x"esp32" ]; then
         cp -rf sdkconfig_esp32 sdkconfig.defaults
     elif [ x"$CHIP" = x"esp32c3" ]; then
@@ -56,8 +65,7 @@ function prepare_build()
 
     echo "set-target ${CHIP}"
     idf.py set-target ${CHIP}
-    rm -rf sdkconfig
-    rm -rf sdkconfig.old
+
 }
 
 TOP_DIR=$(dirname "$0")
@@ -71,7 +79,7 @@ if [ -d "${TOP_DIR}/tuya_open_sdk/build" ]; then
         prepare_build
     fi
 else
-    echo "Warning: Directory build does not exist!"
+    echo "Directory build does not exist!"
 
     prepare_build
 fi

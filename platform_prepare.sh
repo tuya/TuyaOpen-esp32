@@ -19,15 +19,16 @@ if [ -f ${TOP_DIR}/.prepare ]; then
     if [ x"${TARGET}" == x"${OLD_TARGET}" ] ; then
         echo "Use existing platform prepare."
         exit 0
+    else
+        echo "Remove old platform prepare."
     fi
-
-    rm -rf .prepare
 fi
 
 echo "Start platform prepare ..."
 
 rm -rf ${TOP_DIR}/.target
-
+rm -rf ${TOP_DIR}/.app
+rm -rf ${TOP_DIR}/.prepare
 rm -rf ${TOP_DIR}/tuya_open_sdk/sdkconfig
 rm -rf ${TOP_DIR}/tuya_open_sdk/sdkconfig.old
 rm -rf ${TOP_DIR}/tuya_open_sdk/sdkconfig.defaults

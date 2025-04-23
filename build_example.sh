@@ -61,6 +61,19 @@ APP_VERSION=$EXAMPLE_VER
 
 if [ "$USER_CMD" = "build" ]; then
     USER_CMD=all
+elif [ "${USER_CMD}" = "clean" ]; then
+
+    cd tuya_open_sdk
+    rm -rf build
+    
+    rm -rf sdkconfig
+    rm -rf sdkconfig.old
+    rm sdkconfig.defaults
+
+    rm -rf .target
+    rm -rf .app
+    rm -rf .prepare
+    exit 0
 fi
 
 TOP_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -90,12 +103,7 @@ fi
 echo "Build Target: $TARGET"
 
 cd tuya_open_sdk
-if [ "${USER_CMD}" = "clean" ]; then
-    idf.py clean
-    rm -rf .target
-    rm -rf .app
-    exit 0
-elif [ "${USER_CMD}" = "menuconfig" ]; then
+if [ "${USER_CMD}" = "menuconfig" ]; then
     idf.py menuconfig
     exit 0
 fi
