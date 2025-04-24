@@ -136,9 +136,9 @@ static int __tkl_vad_init(void)
     afe_config->afe_ns_mode = AFE_NS_MODE_NET;
     afe_config->vad_init = true;
     afe_config->vad_mode = VAD_MODE_0;
-    afe_config->vad_min_speech_ms = 128*5;
+    afe_config->vad_min_speech_ms = 128*4;
     afe_config->vad_min_noise_ms = 300;
-    afe_config->vad_delay_ms = 128*5;
+    afe_config->vad_delay_ms = 128*4;
     afe_config->afe_perferred_core = 1;
     afe_config->afe_perferred_priority = 1;
     afe_config->agc_init = false;
@@ -243,7 +243,7 @@ OPERATE_RET tkl_vad_start(void)
     }
 
     if (sg_vad_hdl.task_status == VAD_TASK_STATUS_WORKING) {
-        ESP_LOGW(TAG, "VAD task is already working");
+        // ESP_LOGW(TAG, "VAD task is already working");
         return OPRT_OK;
     }
 
@@ -264,7 +264,7 @@ OPERATE_RET tkl_vad_stop(void)
     }
 
     if (sg_vad_hdl.task_status == VAD_TASK_STATUS_STOP) {
-        ESP_LOGW(TAG, "VAD task is already stopped");
+        // ESP_LOGW(TAG, "VAD task is already stopped");
         return OPRT_OK;
     }
 

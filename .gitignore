@@ -11,3 +11,5 @@ tuya_open_sdk/sdkconfig.defaults
 *.using_config
 .app
 .prepare
+managed_components
+dependencies.lock

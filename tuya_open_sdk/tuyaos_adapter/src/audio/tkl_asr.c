@@ -132,6 +132,10 @@ static OPERATE_RET __tkl_asr_init(void)
     }
 
     afe_config_t* afe_config = afe_config_init("M", models, AFE_TYPE_SR, AFE_MODE_HIGH_PERF);
+    afe_config->aec_init = false;
+    afe_config->afe_perferred_core = 1;
+    afe_config->afe_perferred_priority = 1;
+    afe_config->memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
 
     sg_asr_hdl.afe_iface = esp_afe_handle_from_config(afe_config);
     if (NULL == sg_asr_hdl.afe_iface) {
