@@ -52,11 +52,15 @@ set(include_dirs
     "include/asr"
     )
 
-string(REPLACE " " ";" TUYAOS_HEADER_DIR_LIST $ENV{TUYAOS_HEADER_DIR})
+if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
 
-foreach(head ${TUYAOS_HEADER_DIR_LIST})
-    list(APPEND include_dirs ${head})
-endforeach()
+    string(REPLACE " " ";" TUYAOS_HEADER_DIR_LIST $ENV{TUYAOS_HEADER_DIR})
+
+    foreach(head ${TUYAOS_HEADER_DIR_LIST})
+        list(APPEND include_dirs ${head})
+    endforeach()
+
+endif()
 
 if(NOT "$ENV{TUYAOS_BOARD_PATH}" STREQUAL "")
     if(EXISTS "$ENV{TUYAOS_BOARD_PATH}/common/CMakeLists.txt")
