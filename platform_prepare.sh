@@ -60,22 +60,11 @@ function enable_mirror()
 {
     get_country_code
     if [ x"$MORROR" = x"1" ]; then
-        echo "enable mirror"
-        if [ ! -d ${IDF_GITEE_TOOLS_PATH} ]; then
-            echo "clone esp-gitee-tools"
-            git clone https://gitee.com/EspressifSystems/esp-gitee-tools.git ${IDF_GITEE_TOOLS_PATH}
-        fi
+        echo "enable cn mirror"
 
-        # enable mirror
-        bash ${IDF_GITEE_TOOLS_PATH}/jihu-mirror.sh set
-    fi
-}
-
-function disable_mirror()
-{
-    if [ x"$MORROR" = x"1" ]; then
-        echo "disable mirror"
-        bash ${IDF_GITEE_TOOLS_PATH}/jihu-mirror.sh unset
+        export IDF_GITHUB_ASSETS="dl.espressif.cn/github_assets"
+    else
+        export IDF_GITHUB_ASSETS="dl.espressif.com/github_assets"
     fi
 }
 
@@ -140,8 +129,6 @@ if [ $? -ne 0 ]; then
     echo "update idf tools failed ..."
     exit 1
 fi
-
-disable_mirror
 
 echo ${TARGET} > ${TOP_DIR}/.prepare
 
