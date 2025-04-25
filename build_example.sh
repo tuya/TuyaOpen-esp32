@@ -163,6 +163,8 @@ cp -rf ${BULID_PATH}/partition_table/partition-table.bin ${APP_BIN_DIR}/partitio
 cp -rf ${BULID_PATH}/ota_data_initial.bin ${APP_BIN_DIR}/ota_data_initial.bin
 cp -rf ${BULID_PATH}/tuya_open_sdk.bin ${APP_BIN_DIR}/${APP_BIN_NAME}.bin
 
+
+
 #	echo "BULID_PATH=${BULID_PATH}"
 get_python_version
 
@@ -177,6 +179,9 @@ cp -rf ${APP_BIN_DIR}/${APP_BIN_NAME}.bin ${APP_BIN_DIR}/${APP_BIN_NAME}_UG_${AP
 cp -rf ${BULID_PATH}/tuya_open_sdk.elf ${APP_BIN_DIR}/${APP_BIN_NAME}_${APP_VERSION}.elf
 cp -rf ${BULID_PATH}/tuya_open_sdk.map ${APP_BIN_DIR}/${APP_BIN_NAME}_${APP_VERSION}.map
 
+if [ -f ${BULID_PATH}/srmodels/srmodels.bin ]; then
+    cp -rf ${BULID_PATH}/srmodels/srmodels.bin ${APP_BIN_DIR}/srmodels.bin
+fi
 echo "*************************************************************************"
 echo "*************************************************************************"
 echo "*************************************************************************"
