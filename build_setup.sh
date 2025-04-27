@@ -68,6 +68,7 @@ function prepare_build()
 
     echo "set-target ${CHIP}"
     idf.py set-target ${CHIP}
+    echo "need-set-target" > ${TOP_DIR}/.target
 
 }
 
