@@ -13,3 +13,5 @@ tuya_open_sdk/sdkconfig.defaults
 .prepare
 managed_components
 dependencies.lock
+
+.mirror
