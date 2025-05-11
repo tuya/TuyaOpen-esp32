@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 # 参数说明：
-# $1 - example name: echo_app_top
-# $2 - example version: 1.0.0
-# $3 - header files directory:
-# $4 - libs directory:
-# $5 - libs: tuyaos tuyaapp
-# $6 - output directory:
+# $1 - params path: echo_app_top
+# $2 - user cmd: build / clean / ...
 
 PYTHON_CMD="python3"
 
@@ -34,14 +30,19 @@ get_python_version()
 set -e
 cd `dirname $0`
 
-EXAMPLE_NAME=$1
-EXAMPLE_VER=$2
-HEADER_DIR=$3
-LIBS_DIR=$4
-LIBS=$5
-OUTPUT_DIR=$6
-USER_CMD=$7
-TARGET=$8
+BUILD_PARAM_DIR=$1
+BUILD_PARAM_FILE=$BUILD_PARAM_DIR/build_param.config
+. $BUILD_PARAM_FILE
+
+EXAMPLE_NAME=$CONFIG_PROJECT_NAME
+EXAMPLE_VER=$CONFIG_PROJECT_VERSION
+HEADER_DIR=$OPEN_HEADER_DIR
+LIBS_DIR=$OPEN_LIBS_DIR
+LIBS=$PLATFORM_NEED_LIBS
+OUTPUT_DIR=$BIN_OUTPUT_DIR
+USER_CMD=$2
+TARGET=$PLATFORM_CHIP
+BOARD_NAME=$PLATFORM_BOARD
 
 # echo EXAMPLE_NAME=$EXAMPLE_NAME
 # echo EXAMPLE_VER=$EXAMPLE_VER
@@ -51,6 +52,8 @@ TARGET=$8
 # echo OUTPUT_DIR=$OUTPUT_DIR
 # echo USER_CMD=$USER_CMD
 # echo TARGET=$TARGET
+# echo BOARD_NAME=$BOARD_NAME
+# exit 0
 
 export TUYAOS_HEADER_DIR=$HEADER_DIR
 export TUYAOS_LIBS_DIR=$LIBS_DIR
