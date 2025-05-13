@@ -73,4 +73,25 @@ endif()
 # message(STATUS "TUYAOS_ADAPTER_INCLUDE_DIRS: ${include_dirs}")
 
 idf_component_register(SRCS "${SOURCES}"
-                    INCLUDE_DIRS "${include_dirs}" REQUIRES lvgl esp_lvgl_port esp_lcd esp-sr esp_codec_dev mbedtls nvs_flash bt esp_pm esp_adc efuse soc driver app_update)
+                    INCLUDE_DIRS "${include_dirs}" 
+                    REQUIRES 
+                        lvgl
+                        esp_lvgl_port
+                        esp_lcd
+                        esp_lcd_sh8601
+                        esp_io_expander_tca9554
+                        esp_io_expander
+                        esp-sr
+                        esp_codec_dev
+                        mbedtls
+                        nvs_flash
+                        bt
+                        esp_pm
+                        esp_adc
+                        efuse
+                        soc
+                        driver
+                        app_update
+                    )
+
+target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLV_LVGL_H_INCLUDE_SIMPLE")
