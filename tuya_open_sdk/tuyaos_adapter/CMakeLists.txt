@@ -1,17 +1,26 @@
+if(DEFINED ENV{BUILD_PARAM_DIR} AND NOT "$ENV{BUILD_PARAM_DIR}" STREQUAL "")
+    include($ENV{BUILD_PARAM_DIR}/build_param.cmake)
+endif()
+
 set(TUYAOS_ADAPTER_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 # message(STATUS "TUYAOS_ADAPTER_DIR: ${TUYAOS_ADAPTER_DIR}")
 
 file(GLOB_RECURSE SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/audio/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/system/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.c"
+)
+
+if (CONFIG_ENABLE_AUDIO)
+    file(GLOB_RECURSE SOURCES_AUDIO "${CMAKE_CURRENT_SOURCE_DIR}/src/audio/*.c")
+    list(APPEND SOURCES ${SOURCES_AUDIO}
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s_watcher.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s.c"
     )
+endif()
 
 list(APPEND SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_adc.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_flash.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s_watcher.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_network.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_ota.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_pin.c"

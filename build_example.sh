@@ -34,6 +34,8 @@ BUILD_PARAM_DIR=$1
 BUILD_PARAM_FILE=$BUILD_PARAM_DIR/build_param.config
 . $BUILD_PARAM_FILE
 
+export BUILD_PARAM_DIR=$BUILD_PARAM_DIR
+
 EXAMPLE_NAME=$CONFIG_PROJECT_NAME
 EXAMPLE_VER=$CONFIG_PROJECT_VERSION
 HEADER_DIR=$OPEN_HEADER_DIR
@@ -141,6 +143,20 @@ elif [ x"$TARGET" = x"esp32s3" ]; then
 else
     echo "Target $TARGET not support"
     exit 1
+fi
+
+if [ x"$CONFIG_PLATFORM_FLASHSIZE_16M" = x"y" ]; then
+    echo "set flash size 16M"
+    rm -rf partitions.csv
+    cp -rf partitions_16M.csv partitions.csv
+elif [ x"$CONFIG_PLATFORM_FLASHSIZE_8M" = x"y" ]; then
+    echo "set flash size 8M"
+    rm -rf partitions.csv
+    cp -rf partitions_8M.csv partitions.csv
+else
+    echo "set flash size 4M"
+    rm -rf partitions.csv
+    cp -rf partitions_4M.csv partitions.csv
 fi
 
 if [ ! -f ${TOP_DIR}/.target ] || [ x"${TARGET}" != x"${OLD_TARGET}" ] ; then
