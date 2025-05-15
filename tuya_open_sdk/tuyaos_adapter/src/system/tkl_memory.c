@@ -27,8 +27,11 @@
 void *tkl_system_malloc(size_t size)
 {
     // --- BEGIN: user implements ---
-    // return pvPortMalloc(size);
+#if defined (SPIRAM)
     return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+#else
+    return pvPortMalloc(size);
+#endif
     // --- END: user implements ---
 }
 
