@@ -45,6 +45,7 @@ typedef struct {
     TKL_MUTEX_HANDLE mutex_hdl;
     VAD_TASK_STATUS_T task_status;
 
+    afe_fetch_result_t last_result;
     esp_afe_sr_iface_t* afe_iface;
     esp_afe_sr_data_t* afe_data;
 
@@ -104,20 +105,31 @@ static void __tkl_vad_feed_task(void *arg)
 
 static void __tkl_vad_detect_task(void *arg)
 {
-    static afe_fetch_result_t last_vad_state = {
-        .vad_state = TKL_VAD_STATUS_NONE
+    static const char* const VAD_STATE_STR[] = {
+        "SILENCE",
+        "SPEECH",
     };
+
+    sg_vad_hdl.last_result.vad_state = VAD_SILENCE;
     for (;;) {
         afe_fetch_result_t* res = sg_vad_hdl.afe_iface->fetch_with_delay(sg_vad_hdl.afe_data, portMAX_DELAY);
         if (!res || res->ret_value == ESP_FAIL) {
             ESP_LOGE(TAG, "fetch error!");
             continue;
         }
-        if(last_vad_state.vad_state != res->vad_state) {
-            ESP_LOGI(TAG, "vad state: %d -> %d", last_vad_state.vad_state, res->vad_state);
-            last_vad_state.vad_state = res->vad_state;
+        tkl_mutex_lock(sg_vad_hdl.mutex_hdl);
+        if (sg_vad_hdl.task_status != VAD_TASK_STATUS_WORKING) {
+            // Nothing to do
+            tkl_mutex_unlock(sg_vad_hdl.mutex_hdl);
+            continue;
+        }
+
+        if(sg_vad_hdl.last_result.vad_state != res->vad_state) {
+            ESP_LOGI(TAG, "vad state: %s -> %s", VAD_STATE_STR[sg_vad_hdl.last_result.vad_state], VAD_STATE_STR[res->vad_state]);
+            sg_vad_hdl.last_result.vad_state = res->vad_state;
         }
         sg_vad_hdl.vad_status = (res->vad_state == VAD_SPEECH) ? TKL_VAD_STATUS_SPEECH : TKL_VAD_STATUS_NONE;
+        tkl_mutex_unlock(sg_vad_hdl.mutex_hdl);
     }
 }
 
@@ -136,9 +148,9 @@ static int __tkl_vad_init(void)
     afe_config->afe_ns_mode = AFE_NS_MODE_NET;
     afe_config->vad_init = true;
     afe_config->vad_mode = VAD_MODE_0;
-    afe_config->vad_min_speech_ms = 128*4;
-    afe_config->vad_min_noise_ms = 300;
-    afe_config->vad_delay_ms = 128*4;
+    afe_config->vad_min_speech_ms = 128*3;
+    afe_config->vad_min_noise_ms = 500;
+    afe_config->vad_delay_ms = 128*3;
     afe_config->afe_perferred_core = 1;
     afe_config->afe_perferred_priority = 1;
     afe_config->agc_init = false;
@@ -159,6 +171,13 @@ OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
         return OPRT_INVALID_PARM;
     }
 
+    rt = tkl_mutex_create_init(&sg_vad_hdl.mutex_hdl);
+    if (OPRT_OK != rt) {
+        ESP_LOGE(TAG, "Failed to create VAD mutex");
+        return rt;
+    }
+    ESP_LOGD(TAG, "VAD mutex created");
+
     // Initialize ring buffer
     rt = tuya_ring_buff_create(FEED_RB_SIZE, OVERFLOW_STOP_TYPE, &sg_vad_hdl.rb_hdl);
     if (OPRT_OK != rt) {
@@ -178,15 +197,6 @@ OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
     xTaskCreatePinnedToCore(&__tkl_vad_feed_task, "tkl_vad_feed", 8 * 1024, NULL, 4, NULL, 0);
     xTaskCreatePinnedToCore(&__tkl_vad_detect_task, "tkl_vad_detect", 4 * 1024, NULL, 4, NULL, 1);
 
-    ESP_LOGD(TAG, "VAD task created");
-
-    rt = tkl_mutex_create_init(&sg_vad_hdl.mutex_hdl);
-    if (OPRT_OK != rt) {
-        ESP_LOGE(TAG, "Failed to create VAD mutex");
-        return rt;
-    }
-    ESP_LOGD(TAG, "VAD mutex created");
-    
     ESP_LOGI(TAG, "VAD initialized successfully");
 
     sg_vad_hdl.is_init = 1;
@@ -270,6 +280,8 @@ OPERATE_RET tkl_vad_stop(void)
 
     tkl_mutex_lock(sg_vad_hdl.mutex_hdl);
     TKL_VAD_TASK_STAT_CHANGE(VAD_TASK_STATUS_STOP);
+    sg_vad_hdl.last_result.vad_state = VAD_SILENCE;
+    sg_vad_hdl.vad_status = TKL_VAD_STATUS_NONE;
     tkl_mutex_unlock(sg_vad_hdl.mutex_hdl);
 
     return rt;
