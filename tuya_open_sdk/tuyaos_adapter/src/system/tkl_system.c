@@ -132,6 +132,10 @@ TUYA_RESET_REASON_E tkl_system_get_reset_reason(char** describe)
 */
 void tkl_system_sleep(uint32_t num_ms)
 {
+    if(num_ms < 10) {
+        num_ms = 10;
+    }
+
     // --- BEGIN: user implements ---
     TickType_t xTicksToDelay;
     xTicksToDelay = pdMS_TO_TICKS(num_ms);

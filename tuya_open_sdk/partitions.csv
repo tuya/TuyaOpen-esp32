@@ -3,7 +3,8 @@
 nvs,            data,   nvs,        0x9000,     0x4000
 otadata,        data,   ota,        0xd000,     0x2000
 phy_init,       data,   phy,        0xf000,     0x1000
-ota_0,0,      ota_0,      0x10000,    0x180000
-ota_1,0,      ota_1,      0x190000,   0x180000
-tuya,   data,  0xAA,  0x3b0000, 0x28000
-factory_nvs,    data,   nvs,        0x3e0000,   0x4000
+ota_0,             0, ota_0,       0x10000,     0x760000
+ota_1,             0, ota_1,      0x770000,     0x760000
+model,          data, spiffs,     0xED0000,     0xF0000
+tuya,           data,  0xAA,      0xFC0000,     0x3C000
+factory_nvs,    data,   nvs,      0xFFC000,     0x4000
