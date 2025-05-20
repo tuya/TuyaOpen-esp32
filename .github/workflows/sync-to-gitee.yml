@@ -5,7 +5,7 @@ on:
 
 jobs:
   sync:
-    if: github.repository == 'tuya/TuyaOpen'
+    if: github.repository == 'tuya/TuyaOpen-esp32'
     runs-on: ubuntu-latest
     name: Git Repo Sync
     steps:
