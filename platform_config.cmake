@@ -13,6 +13,7 @@ set(PLATFORM_PUBINC_2
     ${IDF_PATH}/components/mbedtls/port/include
     ${IDF_PATH}/components/soc/${TOS_PROJECT_CHIP}/include
     ${PLATFORM_PATH}/tuya_open_sdk/build/config
+    ${PLATFORM_PATH}/tuya_open_sdk/managed_components/lvgl__lvgl/src
     ${BOARD_INC}
 )
 

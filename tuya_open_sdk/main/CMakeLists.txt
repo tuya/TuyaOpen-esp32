@@ -22,6 +22,17 @@ if(NOT "$ENV{TUYAOS_LIBS}" STREQUAL "")
         add_prebuilt_library(${lib} "${TUYA_OPENSDK_LIB_PATH}/lib${lib}.a" REQUIRES tuyaos_adapter mbedtls)
         target_link_libraries(${COMPONENT_LIB} PUBLIC ${lib})
     endforeach()
+    target_link_libraries(${COMPONENT_LIB} INTERFACE
+                            "-u lv_mem_init"
+                            "-u lv_mem_deinit"
+                            "-u lv_mem_add_pool"
+                            "-u lv_malloc_core"
+                            "-u lv_realloc_core"
+                            "-u lv_free_core"
+                            "-u lv_mem_monitor_core"
+                            "-u lv_mem_test_core"
+                            "-u lv_port_log_print"
+                        )
 endif()
 
 target_include_directories(mbedcrypto
