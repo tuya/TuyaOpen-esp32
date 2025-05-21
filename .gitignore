@@ -7,6 +7,7 @@ tuya_open_sdk/.cache
 tuya_open_sdk/sdkconfig
 tuya_open_sdk/sdkconfig.old
 tuya_open_sdk/sdkconfig.defaults
+tuya_open_sdk/partitions.csv
 *.build/
 *.using_config
 .app
@@ -15,3 +16,4 @@ managed_components
 dependencies.lock
 
 .mirror
+__pycache__
