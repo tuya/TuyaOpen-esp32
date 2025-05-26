@@ -11,8 +11,11 @@
 
 // --- BEGIN: user defines and implements ---
 #include "tkl_memory.h"
-#include "freertos/FreeRTOS.h"
 #include "tuya_error_code.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include "esp_heap_caps.h"
 // --- END: user defines and implements ---
 
 /**
@@ -26,13 +29,11 @@
 */
 void *tkl_system_malloc(size_t size)
 {
-    // --- BEGIN: user implements ---
 #if defined (CONFIG_SPIRAM)
     return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
 #else
-    return pvPortMalloc(size);
-#endif
-    // --- END: user implements ---
+    return malloc(size);
+#endif // CONFIG_SPIRAM
 }
 
 /**
@@ -47,7 +48,6 @@ void *tkl_system_malloc(size_t size)
 void tkl_system_free(void* ptr)
 {
     // --- BEGIN: user implements ---
-    // vPortFree(ptr);
     free(ptr);
     // --- END: user implements ---
 }
@@ -108,6 +108,7 @@ void *tkl_system_realloc(void* ptr, size_t size)
     // --- END: user implements ---
 }
 
+#if defined (CONFIG_SPIRAM)
 /**
 * @brief Get system free heap size
 *
@@ -117,27 +118,20 @@ void *tkl_system_realloc(void* ptr, size_t size)
 */
 int tkl_system_get_free_heap_size(void)
 {
-    /*
-     * ble assert 时会通过bk_ble_mem_assert_type_cb返回对应的asser reason， 通过这个回调判断当前是否出现ble assert。
-     * 通过 tkl_system_get_free_heap_size 返回小于 8k 内存，触发sdk对内存监控小于8k时通知应用，决定是否需要重启。
-    */
-
     // --- BEGIN: user implements ---
-    return  (int)xPortGetFreeHeapSize();
+    return (int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
     // --- END: user implements ---
 }
 
 void *tkl_system_psram_malloc(size_t size)
 {
     // --- BEGIN: user implements ---
-    // return tkl_system_malloc(size);
     return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
     // --- END: user implements ---
 }
 
 void tkl_system_psram_free(void* ptr)
 {
-    // tkl_system_free(ptr);
     free(ptr);
 }
 
@@ -147,3 +141,4 @@ int tkl_system_psram_get_free_heap_size(void)
     return (int)heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     // --- END: user implements ---
 }
+#endif // CONFIG_SPIRAM
