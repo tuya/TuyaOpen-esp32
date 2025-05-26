@@ -182,7 +182,7 @@ OPERATE_RET tkl_asr_init(void)
     sg_asr_hdl.process_uint_size = chunksize * sizeof(int16_t) * feed_channel;
     ESP_LOGI(TAG, "Process unit size: %ld", sg_asr_hdl.process_uint_size);
 
-    xTaskCreatePinnedToCore(&__tkl_asr_feed_task, "tkl_asr_feed", 8 * 1024, NULL, 4, NULL, 0);
+    xTaskCreatePinnedToCore(&__tkl_asr_feed_task, "tkl_asr_feed", 2 * 1024, NULL, 4, NULL, 0);
     xTaskCreatePinnedToCore(&__tkl_asr_detect_task, "tkl_asr_detect", 4 * 1024, NULL, 4, NULL, 1);
 
     ESP_LOGI(TAG, "ASR initialized successfully");

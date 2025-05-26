@@ -282,6 +282,9 @@ OPERATE_RET tkl_vad_stop(void)
     TKL_VAD_TASK_STAT_CHANGE(VAD_TASK_STATUS_STOP);
     sg_vad_hdl.last_result.vad_state = VAD_SILENCE;
     sg_vad_hdl.vad_status = TKL_VAD_STATUS_NONE;
+    if (NULL != sg_vad_hdl.afe_data) {
+        sg_vad_hdl.afe_iface->reset_buffer(sg_vad_hdl.afe_data);
+    }
     tkl_mutex_unlock(sg_vad_hdl.mutex_hdl);
 
     return rt;
