@@ -101,4 +101,5 @@ idf_component_register(SRCS "${SOURCES}"
                         soc
                         driver
                         app_update
+                        esp_lcd_touch_ft5x06
                     )
