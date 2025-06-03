@@ -16,6 +16,7 @@
 #endif
 
 #include "tuya_cloud_types.h"
+#include <sdkconfig.h>
 
 
 typedef void* TUYA_RINGBUFF_T;
@@ -25,7 +26,10 @@ typedef enum {
     OVERFLOW_COVERAGE_TYPE, ///< unread buff area will be overwritten when writing overflow
 }RINGBUFF_TYPE_E;
 
+#if defined (CONFIG_SPIRAM)
 #define TUYA_PSARM_SUPPORT
+#endif
+
 #if defined(TUYA_PSARM_SUPPORT) && defined(TUYA_PSARM_SUPPORT)
 #define TY_RINGBUF_PSRAM_FLAG 0x80
 #define OVERFLOW_PSRAM_STOP_TYPE (OVERFLOW_STOP_TYPE | TY_RINGBUF_PSRAM_FLAG)
