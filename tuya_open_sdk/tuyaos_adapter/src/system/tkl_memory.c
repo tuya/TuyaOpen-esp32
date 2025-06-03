@@ -108,7 +108,6 @@ void *tkl_system_realloc(void* ptr, size_t size)
     // --- END: user implements ---
 }
 
-#if defined (CONFIG_SPIRAM)
 /**
 * @brief Get system free heap size
 *
@@ -123,6 +122,7 @@ int tkl_system_get_free_heap_size(void)
     // --- END: user implements ---
 }
 
+#if defined (CONFIG_SPIRAM)
 void *tkl_system_psram_malloc(size_t size)
 {
     // --- BEGIN: user implements ---
