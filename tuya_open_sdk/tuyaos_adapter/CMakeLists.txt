@@ -13,7 +13,6 @@ file(GLOB_RECURSE SOURCES
 if (CONFIG_ENABLE_AUDIO)
     file(GLOB_RECURSE SOURCES_AUDIO "${CMAKE_CURRENT_SOURCE_DIR}/src/audio/*.c")
     list(APPEND SOURCES ${SOURCES_AUDIO}
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s_watcher.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s.c"
     )
 endif()

@@ -234,7 +234,7 @@ OPERATE_RET tkl_adc_init(TUYA_ADC_NUM_E port_num, TUYA_ADC_BASE_CFG_T *cfg)
     adc_oneshot_new_unit(&adc_cfg, &adc_handle);
 
     adc_chan_cfg.bitwidth = ADC_BITWIDTH_DEFAULT;
-    adc_chan_cfg.atten = ADC_ATTEN_DB_11;
+    adc_chan_cfg.atten = ADC_ATTEN_DB_12;
 
     adc_oneshot_config_channel(adc_handle, ADC_CHANNEL_2, &adc_chan_cfg);
     adc_oneshot_config_channel(adc_handle, ADC_CHANNEL_3, &adc_chan_cfg);
@@ -251,7 +251,7 @@ OPERATE_RET tkl_adc_init(TUYA_ADC_NUM_E port_num, TUYA_ADC_BASE_CFG_T *cfg)
 OPERATE_RET tkl_adc_read_data(TUYA_ADC_NUM_E port_num, int32_t *buff, uint16_t len)
 {
     //int voltage[2][10];
-    adc_oneshot_read(adc_handle, ADC_CHANNEL_2, buff);
+    adc_oneshot_read(adc_handle, ADC_CHANNEL_2, (int *)buff);
     //adc_cali_raw_to_voltage(adc_handle, buff, &voltage[0][1]);
     return OPRT_OK;
 }
