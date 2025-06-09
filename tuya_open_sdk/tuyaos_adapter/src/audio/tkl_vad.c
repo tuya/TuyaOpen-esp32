@@ -68,7 +68,7 @@ typedef struct {
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
-static volatile TKL_VAD_DATA_T sg_vad_hdl = {
+static TKL_VAD_DATA_T sg_vad_hdl = {
     .is_init = 0,
     .vad_status = TKL_VAD_STATUS_NONE,
     .task_status = VAD_TASK_STATUS_NONE,
@@ -206,8 +206,6 @@ OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
 
 OPERATE_RET tkl_vad_feed(uint8_t *data, uint32_t len)
 {
-    OPERATE_RET rt = OPRT_OK;
-
     if (0 == sg_vad_hdl.is_init) {
         return OPRT_COM_ERROR;
     }

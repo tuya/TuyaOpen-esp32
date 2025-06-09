@@ -221,7 +221,6 @@ uint32_t tkl_asr_get_process_uint_size(void)
 
 TKL_ASR_WAKEUP_WORD_E tkl_asr_recognize_wakeup_word(uint8_t *data, uint32_t len)
 {
-    OPERATE_RET rt = OPRT_OK;
     TKL_ASR_WAKEUP_WORD_E rt_wakeup_word = TKL_ASR_WAKEUP_WORD_UNKNOWN;
 
     if (NULL == data || len == 0) {
