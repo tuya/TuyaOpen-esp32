@@ -39,7 +39,7 @@ function prepare_build()
         export IDF_PATH
         export IDF_TOOLS_PATH
         cd ${IDF_PATH}
-        . export.sh > /dev/null
+        . ${IDF_PATH}/export.sh > /dev/null
         cd -
     fi
 
