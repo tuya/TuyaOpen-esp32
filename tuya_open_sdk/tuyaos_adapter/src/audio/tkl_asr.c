@@ -157,7 +157,7 @@ __EXIT:
         afe_config = NULL;
     }
 
-    return 0;
+    return rt;
 }
 
 OPERATE_RET tkl_asr_init(void)
