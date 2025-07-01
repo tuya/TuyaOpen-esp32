@@ -11,33 +11,7 @@
 #include "tuya_cloud_types.h"
 #include "tkl_wired.h"
 #include "esp_log.h"
-// #include <string.h>
-// #include <stdio.h>
-// #include <sys/types.h>
-// #include <sys/socket.h>
-// #include <sys/ioctl.h>
-// #include <net/if.h>
-// #include <netinet/in.h>
-// #include <arpa/inet.h>
-// #include <unistd.h>
 #include <pthread.h>
-
-// #include "net.h"
-
-
-
-// #include <stdio.h>
-// #include <string.h>
-// #include "freertos/FreeRTOS.h"
-// #include "freertos/task.h"
-// #include "esp_netif.h"
-// #include "esp_eth.h"
-// #include "esp_event.h"
-// #include "esp_log.h"
-// #include "ethernet_init.h"
-// #include "sdkconfig.h"
-
-// #include "ethernet_init.h"
 #include "ethw5500.h"
 
 
