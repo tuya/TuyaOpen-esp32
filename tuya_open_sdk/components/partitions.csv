@@ -1,0 +1,32 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# Note: if you have increased the bootloader size, make sure to update the offsets to avoid overlap
+# nvs,      data, nvs,     0x9000,  0x6000,
+# phy_init, data, phy,     0xf000,  0x1000,
+# factory,  app,  factory, 0x10000, 1M,
+# storage,  data, spiffs,  ,        0xF0000,
+
+
+
+# 不够用
+# Name,   Type, SubType, Offset,  Size, Flags
+# nvs,      data, nvs,     0x09000, 0x6000,
+# phy_init, data, phy,     0xf000,  0x1000,
+# factory,  app,  factory, 0x10000, 0x100000,
+# ota_0,    app,  ota_0,   0x200000, 0x200000,
+# ota_1,    app,  ota_1,   0x400000, 0x200000,
+# spiffs,   data, spiffs,  0x600000, 0x100000,
+# otadata,    data,ota,0x700000,8K,
+
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x09000, 0x6000,
+phy_init, data, phy,     0xf000,  0x1000,
+factory,  app,  factory, 0x10000, 0x100000,
+ota_0,    app,  ota_0,   0x200000, 0x200000,
+ota_1,    app,  ota_1,   0x400000, 0x200000,
+spiffs,   data, spiffs,  0x600000, 0x100000,
+otadata,    data,ota,0x700000,8K,
+
+
+
+
+
