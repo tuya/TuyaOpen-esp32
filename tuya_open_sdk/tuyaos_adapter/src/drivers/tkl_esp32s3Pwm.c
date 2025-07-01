@@ -122,9 +122,9 @@ void tkl_esp32s3Pwm_test(void)
 
 
     // 配置参数
-    int channel_count = 4;
-    int gpio_list[4] = {0, 46, 1, 41};//配置通道io
-    int fade_times[4] = {1000, 1000, 1500, 1500}; // 渐变时间(ms)
+    int channel_count = 1;
+    int gpio_list[4] = {0};//配置通道io
+    int fade_times[4] = {3000}; // 渐变时间(ms)
 
     // 初始化PWM
     esp_err_t err = tkl_esp32s3Pwm_init(channel_count, gpio_list, fade_times);
@@ -141,20 +141,27 @@ void tkl_esp32s3Pwm_test(void)
     ESP_LOGI(TAG, "开始PWM测试...");
 
     // 测试所有通道
-    for (int i = 0; i < s_pwm_controller.channel_count; i++) {
-        ESP_LOGI(TAG, "测试通道 %d (GPIO %d)", i, s_pwm_controller.channels[i].gpio_num);
+    for (int i = 0; i < 100; i++) {
+        
+        int chi = 0;
+        ESP_LOGI(TAG, "测试通道 %d (GPIO %d)", chi, s_pwm_controller.channels[chi].gpio_num);
+        ESP_LOGI(TAG,"无渐变 4095");
+        tkl_esp32s3Pwm_setDuty(chi, 4095); // 无渐变
+        vTaskDelay(pdMS_TO_TICKS(3000));
 
-        // 设置占空比为50%
-        tkl_esp32s3Pwm_setDuty(i, 2048); // 13位分辨率下的50%
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        ESP_LOGI(TAG,"无渐变 0");
+        tkl_esp32s3Pwm_setDuty(chi, 0); // 无渐变
+        vTaskDelay(pdMS_TO_TICKS(3000));
 
-        // 渐变到100%
-        tkl_esp32s3Pwm_setFade(i, 4095); // 100%
-        vTaskDelay(pdMS_TO_TICKS(s_pwm_controller.channels[i].max_fade_time_ms));
-
+        ESP_LOGI(TAG,"渐变 4095");
+        tkl_esp32s3Pwm_setFade(chi, 4095); // 100%
+        vTaskDelay(pdMS_TO_TICKS(s_pwm_controller.channels[chi].max_fade_time_ms));
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        ESP_LOGI(TAG,"渐变 0");
         // 渐变到0%
-        tkl_esp32s3Pwm_setFade(i, 0);
-        vTaskDelay(pdMS_TO_TICKS(s_pwm_controller.channels[i].max_fade_time_ms));
+        tkl_esp32s3Pwm_setFade(chi, 0);
+        vTaskDelay(pdMS_TO_TICKS(s_pwm_controller.channels[chi].max_fade_time_ms));
+        vTaskDelay(pdMS_TO_TICKS(3000));
     }
 
     ESP_LOGI(TAG, "PWM测试完成");
