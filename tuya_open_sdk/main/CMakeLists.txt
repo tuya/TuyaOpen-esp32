@@ -10,7 +10,17 @@ if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
 endif()
 
 idf_component_register(SRCS "main.c"
-                    INCLUDE_DIRS ${include_dirs})
+                    INCLUDE_DIRS ${include_dirs}
+#                    PRIV_REQUIRES # 有线
+#                        ethernet_init
+#                        esp_driver_gpio
+#                        esp_eth
+#                        net
+#                        esp_netif
+#                        nvs_flash
+#                        esp_wifi
+#                        mdns
+                    )
 
 if(NOT "$ENV{TUYAOS_LIBS}" STREQUAL "")
     set(TUYA_OPENSDK_LIB_PATH $ENV{TUYAOS_LIBS_DIR})
