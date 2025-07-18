@@ -19,6 +19,221 @@
 // #include "driver/gpio.h"
 #include "soc/gpio_num.h"
 
+#define DBG_TAG "TKL_UART"
+
+
+#if ENABLE_ESP32S3_USB_JTAG_ONLY
+
+#include "driver/usb_serial_jtag.h"
+#define MAX_UART_NUM 1
+#define BUF_SIZE (512)
+
+TUYA_UART_IRQ_CB uart_rx_cb[MAX_UART_NUM];
+TaskHandle_t tkl_uart_thread = NULL;
+    
+static uint8_t *read_data = NULL;
+static int read_len = 0;
+static int read_offset = 0;
+
+static void tkl_uart_rx_process(void *args)
+{
+    while (1) {
+        read_offset = 0;
+        read_len = usb_serial_jtag_read_bytes(read_data, (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
+        if (read_len) {
+            if (uart_rx_cb[TUYA_UART_NUM_0]) {
+                uart_rx_cb[TUYA_UART_NUM_0](TUYA_UART_NUM_0);
+            }
+        }
+    }
+}
+
+/**
+ * @brief uart init
+ * 
+ * @param[in] port_id: uart port id, id index starts at 0
+ *                     in linux platform, 
+ *                         high 16 bits aslo means uart type, 
+ *                                   it's value must be one of the TUYA_UART_TYPE_E type
+ *                         the low 16bit - means uart port id
+ *                         you can input like this TUYA_UART_PORT_ID(TUYA_UART_SYS, 2)
+ * @param[in] cfg: uart config
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_uart_init(TUYA_UART_NUM_E port_id, TUYA_UART_BASE_CFG_T *cfg)
+{
+    BaseType_t ret;
+
+    // Configure USB SERIAL JTAG
+    usb_serial_jtag_driver_config_t usb_serial_jtag_config = {
+        .rx_buffer_size = BUF_SIZE,
+        .tx_buffer_size = BUF_SIZE,
+    };
+
+    ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_serial_jtag_config));
+    ESP_LOGI("usb_serial_jtag echo", "USB_SERIAL_JTAG init done");
+
+    uart_rx_cb[port_id] = NULL;
+
+    read_data = (uint8_t *) malloc(BUF_SIZE);
+    if (read_data == NULL) {
+        ESP_LOGE("usb_serial_jtag echo", "no memory for read_data");
+        return OPRT_MALLOC_FAILED;
+    }
+
+    ret = xTaskCreate(tkl_uart_rx_process, "tkl_uart_thread", 4096, NULL, 4, &tkl_uart_thread);
+    if (ret != pdPASS) {
+        ESP_LOGI(DBG_TAG, "%s: xTaskCreate failed", __func__);
+        return OPRT_COM_ERROR;
+    }
+
+    return OPRT_OK;
+}
+
+/**
+ * @brief uart deinit
+ * 
+ * @param[in] port_id: uart port id, id index starts at 0
+ *                     in linux platform, 
+ *                         high 16 bits aslo means uart type, 
+ *                                   it's value must be one of the TUYA_UART_TYPE_E type
+ *                         the low 16bit - means uart port id
+ *                         you can input like this TUYA_UART_PORT_ID(TUYA_UART_SYS, 2)
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_uart_deinit(TUYA_UART_NUM_E port_id)
+{
+    // --- BEGIN: user implements ---
+    if (NULL != tkl_uart_thread) {
+        vTaskDelete(tkl_uart_thread);
+        tkl_uart_thread = NULL;
+    }
+
+    if (read_data != NULL) {
+        free(read_data);
+        read_data = NULL;
+    }
+
+    return OPRT_OK;
+    // --- END: user implements --
+}
+
+/**
+ * @brief uart write data
+ * 
+ * @param[in] port_id: uart port id, id index starts at 0
+ *                     in linux platform, 
+ *                         high 16 bits aslo means uart type, 
+ *                                   it's value must be one of the TUYA_UART_TYPE_E type
+ *                         the low 16bit - means uart port id
+ *                         you can input like this TUYA_UART_PORT_ID(TUYA_UART_SYS, 2)
+ * @param[in] data: write buff
+ * @param[in] len:  buff len
+ *
+ * @return return > 0: number of data written; return <= 0: write errror
+ */
+int tkl_uart_write(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
+{
+    if (TUYA_UART_NUM_0 == port_id) {
+
+        uint16_t write_len = len;
+        uint8_t *data = (uint8_t *) buff;
+
+        while (write_len > BUF_SIZE) {
+            usb_serial_jtag_write_bytes((const char *) data, BUF_SIZE, 20 / portTICK_PERIOD_MS);
+            write_len -= BUF_SIZE;
+            data += BUF_SIZE;
+        }
+
+        if (write_len > 0) {
+            usb_serial_jtag_write_bytes((const char *) data, write_len, 20 / portTICK_PERIOD_MS);
+            write_len = 0;
+        }
+        return len;
+    }
+
+    return -1;
+}
+
+
+/**
+ * @brief enable uart rx interrupt and regist interrupt callback
+ * 
+ * @param[in] port_id: uart port id, id index starts at 0
+ *                     in linux platform, 
+ *                         high 16 bits aslo means uart type, 
+ *                                   it's value must be one of the TUYA_UART_TYPE_E type
+ *                         the low 16bit - means uart port id
+ *                         you can input like this TUYA_UART_PORT_ID(TUYA_UART_SYS, 2)
+ * @param[in] rx_cb: receive callback
+ *
+ * @return none
+ */
+void tkl_uart_rx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB rx_cb)
+{
+    // --- BEGIN: user implements ---
+    uart_rx_cb[port_id] = rx_cb;
+
+    // --- END: user implements ---
+}
+
+/**
+ * @brief regist uart tx interrupt callback
+ * If this function is called, it indicates that the data is sent asynchronously through interrupt,
+ * and then write is invoked to initiate asynchronous transmission.
+ *  
+ * @param[in] port_id: uart port id, id index starts at 0
+ *                     in linux platform, 
+ *                         high 16 bits aslo means uart type, 
+ *                                   it's value must be one of the TUYA_UART_TYPE_E type
+ *                         the low 16bit - means uart port id
+ *                         you can input like this TUYA_UART_PORT_ID(TUYA_UART_SYS, 2)
+ * @param[in] rx_cb: receive callback
+ *
+ * @return none
+ */
+void tkl_uart_tx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB tx_cb)
+{
+    // --- BEGIN: user implements ---
+    return ;
+    // --- END: user implements ---
+}
+
+
+/**
+ * @brief uart read data
+ * 
+ * @param[in] port_id: uart port id, id index starts at 0
+ *                     in linux platform, 
+ *                         high 16 bits aslo means uart type, 
+ *                                   it's value must be one of the TUYA_UART_TYPE_E type
+ *                         the low 16bit - means uart port id
+ *                         you can input like this TUYA_UART_PORT_ID(TUYA_UART_SYS, 2)
+ * @param[out] data: read data
+ * @param[in] len:  buff len
+ * 
+ * @return return >= 0: number of data read; return < 0: read errror
+ */
+int tkl_uart_read(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
+{
+    // --- BEGIN: user implements ---
+    uint16_t data_size = read_len - read_offset;
+    if (data_size > 0) {
+        if (len > data_size) {
+            len = data_size;
+        }
+        memcpy(buff, read_data + read_offset, len);
+        read_offset += len;
+
+        return len;
+    } else {
+        return 0;
+    }
+    // --- END: user implements --
+}
+#else
+
 #define MAX_UART_NUM 2
 
 #if (defined (UART_NUM0_TX_PIN)) && (defined (UART_NUM0_RX_PIN))
@@ -42,7 +257,6 @@ TaskHandle_t tkl_uart_thread = NULL;
 TUYA_UART_IRQ_CB uart_rx_cb[MAX_UART_NUM];
 QueueHandle_t tkl_uart_rx_queue = NULL;
 
-#define DBG_TAG "TKL_UART"
 // --- END: user defines and implements ---
 
 static void tkl_uart_rx_process(void *args)
@@ -428,3 +642,5 @@ OPERATE_RET tkl_uart_ioctl(TUYA_UART_NUM_E port_id, uint32_t cmd, void *arg)
     // --- END: user implements ---
 }
 
+
+#endif
