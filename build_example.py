@@ -148,7 +148,12 @@ def main():
     chip = param_data["PLATFORM_CHIP"]
     if need_settarget(app_file, app_name) or need_settarget(target_file, chip):
         clean(root)
-        if not set_target(root, chip):
+        # ENABLE_ESP32S3_USB_JTAG_ONLY
+        if param_data.get("CONFIG_ENABLE_ESP32S3_USB_JTAG_ONLY", False):
+            suffix = "_uart"
+        else:
+            suffix = "_usb_jtag"
+        if not set_target(root, chip, suffix):
             print("Error: set-target failed.")
             sys.exit(1)
     record_target(app_file, app_name)

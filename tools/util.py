@@ -128,13 +128,14 @@ def execute_idf_commands(root, cmd, directory) -> bool:
     return True
 
 
-def set_target(root, chip):
+def set_target(root, chip, suffix=""):
     '''
     1. Copy sdkconfig.defaults before generate sdkconfig.h
     use: idf.py set-target xxx
     '''
     tuya_path = os.path.join(root, "tuya_open_sdk")
     sdk_config = os.path.join(tuya_path, f"sdkconfig_{chip}")
+    sdk_config += suffix
     sdk_config_default = os.path.join(tuya_path, "sdkconfig.defaults")
     copy_file(sdk_config, sdk_config_default)
     cmd = f"idf.py set-target {chip}"
