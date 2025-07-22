@@ -137,7 +137,8 @@ def set_target(root, chip, suffix=""):
     sdk_config = os.path.join(tuya_path, f"sdkconfig_{chip}")
     sdk_config += suffix
     sdk_config_default = os.path.join(tuya_path, "sdkconfig.defaults")
-    copy_file(sdk_config, sdk_config_default)
+    if not copy_file(sdk_config, sdk_config_default):
+        return False
     cmd = f"idf.py set-target {chip}"
     directory = os.path.join(root, "tuya_open_sdk")
     if not execute_idf_commands(root, cmd, directory):
