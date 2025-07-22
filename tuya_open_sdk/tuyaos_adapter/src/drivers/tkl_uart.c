@@ -14,6 +14,7 @@
 #include "tuya_error_code.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
+#include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/uart.h"
 // #include "driver/gpio.h"
@@ -255,42 +256,52 @@ int tkl_uart_read(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
 
 TaskHandle_t tkl_uart_thread = NULL;
 TUYA_UART_IRQ_CB uart_rx_cb[MAX_UART_NUM];
-QueueHandle_t tkl_uart_rx_queue = NULL;
+QueueHandle_t tkl_uart_rx_queue[MAX_UART_NUM] = {NULL};
+static QueueSetHandle_t tkl_uart_queue_set = NULL;
 
 // --- END: user defines and implements ---
 
 static void tkl_uart_rx_process(void *args)
 {
-    uart_port_t uart_num = UART_NUM_0;
     uart_event_t event;
-    
-    assert(NULL != args);
-    uart_num = *(uart_port_t *)args;
+    QueueSetMemberHandle_t active_queue;
+    // Initialize the UART event queue
+    while (tkl_uart_queue_set) {
+        active_queue = xQueueSelectFromSet(tkl_uart_queue_set, portMAX_DELAY);
+        if (active_queue == NULL) continue;
 
-    while (tkl_uart_rx_queue && xQueueReceive(tkl_uart_rx_queue, (void * )&event, portMAX_DELAY)) {
-        switch (event.type) {
-        case UART_DATA:
-            if (uart_rx_cb[uart_num]) {
-                uart_rx_cb[uart_num](uart_num);
+        for (uart_port_t i = 0; i < MAX_UART_NUM; i++) {
+            if (active_queue == (QueueSetMemberHandle_t)tkl_uart_rx_queue[i]) {
+                // Drain the queue of all pending events
+                while (xQueueReceive(tkl_uart_rx_queue[i], &event, 0) == pdPASS) {
+                    switch (event.type) {
+                    case UART_DATA:
+                        if (uart_rx_cb[i] != NULL) {
+                            uart_rx_cb[i](i);
+                        }
+                        break;
+                    case UART_BREAK:
+                        break;
+                    case UART_BUFFER_FULL:
+                        break;
+                    case UART_FIFO_OVF:
+                        break;
+                    case UART_PARITY_ERR:
+                        break;
+                    case UART_FRAME_ERR:
+                        break;
+                    case UART_DATA_BREAK:
+                        break;
+                    case UART_PATTERN_DET:
+                        break;
+                    default:
+                        break;
+                    }
+                    // Other events could be logged or handled here
+                }
+                // break; // Move to the next select
             }
-            break;
-        case UART_BREAK:
-            break;
-        case UART_BUFFER_FULL:
-            break;
-        case UART_FIFO_OVF:
-            break;
-        case UART_FRAME_ERR:
-            break;
-        case UART_PARITY_ERR:
-            break;
-        case UART_DATA_BREAK:
-            break;
-        case UART_PATTERN_DET:
-            break;
-        default:
-            break;                
-        } /* switch (event.type) { */
+        }
     }
     vTaskDelete(NULL);
 }
@@ -390,7 +401,7 @@ OPERATE_RET tkl_uart_init(TUYA_UART_NUM_E port_id, TUYA_UART_BASE_CFG_T *cfg)
         return OPRT_COM_ERROR;
     }
     
-    ret = uart_driver_install(uart_num, 256, 0, 10, &tkl_uart_rx_queue, intr_alloc_flags);
+    ret = uart_driver_install(uart_num, 256, 0, 10, &tkl_uart_rx_queue[uart_num], intr_alloc_flags);
     if (ESP_OK != ret) {
         ESP_LOGE(DBG_TAG, "%s: call uart_driver_install failecd(ret=%d)", __func__, ret);
         return OPRT_COM_ERROR;
@@ -431,7 +442,7 @@ OPERATE_RET tkl_uart_deinit(TUYA_UART_NUM_E port_id)
         vTaskDelete(tkl_uart_thread);
         tkl_uart_thread = NULL;
     }
-    tkl_uart_rx_queue = NULL;
+    tkl_uart_rx_queue[uart_num] = NULL;
     return OPRT_OK;
     // --- END: user implements ---
 }
@@ -484,30 +495,37 @@ int tkl_uart_write(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
 void tkl_uart_rx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB rx_cb)
 {
     // --- BEGIN: user implements ---
-    BaseType_t ret;
-    uart_port_t  uart_num = (uart_port_t)port_id; 
+    uart_port_t uart_num = (uart_port_t)port_id;
 
-    if (NULL == rx_cb || uart_num > MAX_UART_NUM) {
-        ESP_LOGI(DBG_TAG, "%s: rx_cb is NULL", __func__);
-        return ;
+    if (NULL == rx_cb || uart_num >= MAX_UART_NUM) {
+        ESP_LOGI(DBG_TAG, "%s: rx_cb is NULL or uart_num is invalid", __func__);
+        return;
     }
 
-    if (NULL != tkl_uart_thread) {
-        ESP_LOGI(DBG_TAG, "%s: tkl_uart_thread is running", __func__);
-        vTaskDelete(tkl_uart_thread);
-        tkl_uart_thread = NULL;
-        return ;
+    uart_rx_cb[uart_num] = rx_cb;
+
+    if (tkl_uart_queue_set == NULL) {
+        tkl_uart_queue_set = xQueueCreateSet(MAX_UART_NUM * 2); // Create a queue set that can hold all queues
+        if (tkl_uart_queue_set == NULL) {
+            ESP_LOGE(DBG_TAG, "Failed to create queue set");
+            return;
+        }
     }
 
-    ret = xTaskCreate(tkl_uart_rx_process, "tkl_uart_thread", 4096, &uart_num, 4, &tkl_uart_thread);
-    if (ret != pdPASS) {
-        ESP_LOGI(DBG_TAG, "%s: xTaskCreate failed", __func__);
-        return ;
+    if (tkl_uart_rx_queue[uart_num] != NULL) {
+        xQueueAddToSet(tkl_uart_rx_queue[uart_num], tkl_uart_queue_set);
+    }
+
+    if (tkl_uart_thread == NULL) {
+        BaseType_t ret = xTaskCreate(tkl_uart_rx_process, "tkl_uart_thread", 4096, NULL, 4, &tkl_uart_thread);
+        if (ret != pdPASS) {
+            ESP_LOGE(DBG_TAG, "%s: xTaskCreate failed", __func__);
+            vQueueDelete(tkl_uart_queue_set);
+            tkl_uart_queue_set = NULL;
+        }
     }
 
     uart_enable_rx_intr(uart_num);
-    uart_rx_cb[uart_num] = rx_cb;
-    // --- END: user implements ---
 }
 
 /**
