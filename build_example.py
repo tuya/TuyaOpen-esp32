@@ -119,10 +119,12 @@ def _suffix(param_data):
     chip = param_data["PLATFORM_CHIP"]
     if "esp32s3" == chip:
         # ENABLE_ESP32S3_USB_JTAG_ONLY
-        if param_data.get("CONFIG_ENABLE_ESP32S3_USB_JTAG_ONLY", False):
-            suffix = "_uart"
-        else:
+        use_usb = param_data.get("CONFIG_ENABLE_ESP32S3_USB_JTAG_ONLY", False)
+        print(f"use_usb: {use_usb}")
+        if use_usb:
             suffix = "_usb_jtag"
+        else:
+            suffix = "_uart"
 
     return suffix
 
