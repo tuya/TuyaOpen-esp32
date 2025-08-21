@@ -133,11 +133,27 @@ def install_target(target):
         os.environ["IDF_GITHUB_ASSETS"] = "dl.espressif.com/github_assets"
 
     idf_path = os.environ["IDF_PATH"]
-    cmd = f"cd {idf_path} && "
-    if get_system_name() == "windows":
-        cmd += f".\\install.bat {target}"
+    
+    # Check if we're in a CI environment
+    is_ci = os.getenv('CI') or os.getenv('GITHUB_ACTIONS') or os.getenv('CONTINUOUS_INTEGRATION')
+    
+    # Set environment variables to reduce verbosity in CI
+    if is_ci:
+        os.environ["IDF_TOOLS_INSTALL_CMD"] = "pip"
+        os.environ["IDF_PYTHON_CHECK_CONSTRAINTS"] = "no"
+        
+    if is_ci and get_system_name() != "windows":
+        # Use silent install script in CI to reduce log noise
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        silent_script = os.path.join(root, "tools", "silent_install.py")
+        cmd = f"python3 {silent_script} {idf_path} {target}"
     else:
-        cmd += f"./install.sh {target}"
+        # Use normal installation
+        cmd = f"cd {idf_path} && "
+        if get_system_name() == "windows":
+            cmd += f".\\install.bat {target}"
+        else:
+            cmd += f"./install.sh {target}"
 
     if do_subprocess(cmd) != 0:
         return False
