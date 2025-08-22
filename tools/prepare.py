@@ -137,16 +137,10 @@ def install_target(target):
     # Check if we're in a CI environment
     is_ci = os.getenv('CI') or os.getenv('GITHUB_ACTIONS') or os.getenv('CONTINUOUS_INTEGRATION')
     
-    # Set environment variables to reduce verbosity in CI
-    if is_ci:
-        os.environ["IDF_TOOLS_INSTALL_CMD"] = "pip"
-        os.environ["IDF_PYTHON_CHECK_CONSTRAINTS"] = "no"
-        
     if is_ci and get_system_name() != "windows":
         # Use silent install script in CI to reduce log noise
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        silent_script = os.path.join(root, "tools", "silent_install.py")
-        cmd = f"python3 {silent_script} {idf_path} {target}"
+        cmd = f"cd {idf_path} && "
+        cmd += f"./install.sh {target} > /dev/null"
     else:
         # Use normal installation
         cmd = f"cd {idf_path} && "
