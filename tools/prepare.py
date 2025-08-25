@@ -133,11 +133,21 @@ def install_target(target):
         os.environ["IDF_GITHUB_ASSETS"] = "dl.espressif.com/github_assets"
 
     idf_path = os.environ["IDF_PATH"]
-    cmd = f"cd {idf_path} && "
-    if get_system_name() == "windows":
-        cmd += f".\\install.bat {target}"
+    
+    # Check if we're in a CI environment
+    is_ci = os.getenv('CI') or os.getenv('GITHUB_ACTIONS') or os.getenv('CONTINUOUS_INTEGRATION')
+    
+    if is_ci and get_system_name() != "windows":
+        # Use silent install script in CI to reduce log noise
+        cmd = f"cd {idf_path} && "
+        cmd += f"./install.sh {target} > /dev/null"
     else:
-        cmd += f"./install.sh {target}"
+        # Use normal installation
+        cmd = f"cd {idf_path} && "
+        if get_system_name() == "windows":
+            cmd += f".\\install.bat {target}"
+        else:
+            cmd += f"./install.sh {target}"
 
     if do_subprocess(cmd) != 0:
         return False
