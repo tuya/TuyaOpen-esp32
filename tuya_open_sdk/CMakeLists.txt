@@ -12,5 +12,5 @@ idf_build_set_property(COMPILE_OPTIONS "-Wno-error=incompatible-pointer-types" A
 
 if(NOT "$ENV{BUILD_PARAM_DIR}" STREQUAL "")
     include($ENV{BUILD_PARAM_DIR}/build_param.cmake)
-    idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_PATH=${OPEN_ROOT}/src/liblvgl/conf/lv_conf.h" APPEND)
+    idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_PATH=${OPEN_ROOT}/src/liblvgl/v9/conf/lv_conf.h" APPEND)
 endif()
