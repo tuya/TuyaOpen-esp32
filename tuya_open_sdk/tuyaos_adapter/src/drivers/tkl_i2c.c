@@ -25,9 +25,7 @@ typedef struct {
     TUYA_GPIO_NUM_E sda;
 } SR_I2C_GPIO_T;
 
-typedef struct {
-    // uint16_t i2c_dev_addr;
-    
+typedef struct {    
     i2c_device_config_t i2c_dev_cfg;
     i2c_master_dev_handle_t i2c_dev_handle;
 } SG_I2C_DEVICE_MAP_T;
@@ -39,8 +37,8 @@ typedef struct {
 ***********************variable define**********************
 ***********************************************************/
 static SR_I2C_GPIO_T sg_i2c_pin[TUYA_I2C_NUM_MAX] = {
-    {TUYA_GPIO_NUM_20, TUYA_GPIO_NUM_21},
     {TUYA_GPIO_NUM_0, TUYA_GPIO_NUM_1},
+    {TUYA_GPIO_NUM_2, TUYA_GPIO_NUM_3},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
