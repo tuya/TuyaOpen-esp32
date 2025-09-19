@@ -136,7 +136,11 @@ OPERATE_RET tkl_i2c_init(TUYA_I2C_NUM_E port, const TUYA_IIC_BASE_CFG_T *cfg)
             if (cfg->addr_width == TUYA_IIC_ADDRESS_7BIT) {
                 sg_i2c_dev_map[port][i].i2c_dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
             } else {
-                sg_i2c_dev_map[port][i].i2c_dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_10;
+                #if PLATFORM_ESP32
+                    ESP_LOGE(TAG, "ESP32 not support 10bit address mode");
+                #else
+                    sg_i2c_dev_map[port][i].i2c_dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_10;
+                #endif
             }
             break;
         }
