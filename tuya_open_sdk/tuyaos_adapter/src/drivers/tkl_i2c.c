@@ -248,17 +248,13 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const vo
     if (esp_rt != ESP_OK) {
         return OPRT_COM_ERROR;
     } else if (ESP_OK == esp_rt && size == 0){
-        // ESP_LOGI(TAG, "I2C device 0x%02X is ready", dev_addr);
         return OPRT_OK;
     }
 
     for (i = 0; i < I2C_DEVICE_MAX_NUM; i++) {
         if (sg_i2c_dev_map[port][i].i2c_dev_handle == NULL) {   // Add an new device
             sg_i2c_dev_map[port][i].i2c_dev_cfg.device_address = dev_addr;                              
-            esp_rt = i2c_master_bus_add_device(i2c_bus[port], &(sg_i2c_dev_map[port][i].i2c_dev_cfg), &dev_handle);
-            if (esp_rt != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to add I2C device: %s", esp_err_to_name(esp_rt));
-            }
+            ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus[port], &(sg_i2c_dev_map[port][i].i2c_dev_cfg), &dev_handle));
             sg_i2c_dev_map[port][i].i2c_dev_handle = dev_handle;
             break;
         } else {
@@ -268,8 +264,8 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const vo
         }
     }
 
-    esp_rt  = i2c_master_transmit(sg_i2c_dev_map[port][i].i2c_dev_handle, data, size, 100);
-    return esp_rt;
+    ESP_ERROR_CHECK(i2c_master_transmit(sg_i2c_dev_map[port][i].i2c_dev_handle, data, size, -1));
+    return OPRT_OK;
 }
 
 /**
@@ -285,7 +281,6 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const vo
 OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void *data, uint32_t size,
                                    BOOL_T xfer_pending)
 {
-    esp_err_t esp_rt = ESP_OK;
     uint8_t i = 0;
     i2c_master_dev_handle_t dev_handle;
 
@@ -296,10 +291,7 @@ OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void 
     for (i = 0; i < I2C_DEVICE_MAX_NUM; i++) {
         if (sg_i2c_dev_map[port][i].i2c_dev_handle == NULL) {   // Add an new device
             sg_i2c_dev_map[port][i].i2c_dev_cfg.device_address = dev_addr;                              
-            esp_rt = i2c_master_bus_add_device(i2c_bus[port], &(sg_i2c_dev_map[port][i].i2c_dev_cfg), &dev_handle);
-            if (esp_rt != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to add I2C device: %s", esp_err_to_name(esp_rt));
-            }
+            ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus[port], &(sg_i2c_dev_map[port][i].i2c_dev_cfg), &dev_handle));
             sg_i2c_dev_map[port][i].i2c_dev_handle = dev_handle;
             break;
         } else {
@@ -309,8 +301,8 @@ OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void 
         }
     }
 
-    esp_rt = i2c_master_receive(sg_i2c_dev_map[port][i].i2c_dev_handle, data, size, 100);
-    return esp_rt;
+    ESP_ERROR_CHECK(i2c_master_receive(sg_i2c_dev_map[port][i].i2c_dev_handle, data, size, -1));
+    return OPRT_OK;
 }
 /**
  * @brief i2c slave
