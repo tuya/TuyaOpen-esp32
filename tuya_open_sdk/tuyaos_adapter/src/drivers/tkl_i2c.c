@@ -16,7 +16,7 @@
 ************************macro define************************
 ***********************************************************/
 #define TAG "tkl_i2c"
-#define I2C_DEVICE_MAX_NUM (5)
+
 /***********************************************************
 ***********************typedef define***********************
 ***********************************************************/
@@ -24,11 +24,6 @@ typedef struct {
     TUYA_GPIO_NUM_E scl;
     TUYA_GPIO_NUM_E sda;
 } SR_I2C_GPIO_T;
-
-typedef struct {    
-    i2c_device_config_t i2c_dev_cfg;
-    i2c_master_dev_handle_t i2c_dev_handle;
-} SG_I2C_DEVICE_MAP_T;
 /***********************************************************
 ********************function declaration********************
 ***********************************************************/
@@ -44,8 +39,9 @@ static SR_I2C_GPIO_T sg_i2c_pin[TUYA_I2C_NUM_MAX] = {
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX}
 };
-static SG_I2C_DEVICE_MAP_T sg_i2c_dev_map[TUYA_I2C_NUM_MAX][I2C_DEVICE_MAX_NUM] = {0};
-static i2c_master_bus_handle_t i2c_bus[TUYA_GPIO_NUM_MAX] = {NULL};
+
+static i2c_master_bus_handle_t i2c_bus[TUYA_I2C_NUM_MAX] = {NULL};
+static i2c_device_config_t i2c_dev_cfg[TUYA_I2C_NUM_MAX] = {0};
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
@@ -100,48 +96,39 @@ void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin)
 OPERATE_RET tkl_i2c_init(TUYA_I2C_NUM_E port, const TUYA_IIC_BASE_CFG_T *cfg)
 {
     esp_err_t esp_rt = ESP_OK;
-    uint8_t i = 0;
 
     if (port >= TUYA_I2C_NUM_MAX || cfg == NULL) {
         return OPRT_INVALID_PARM;
     }
 
     if (i2c_bus[port] == NULL) {    // i2c bus not init
-        for (i = 0; i < I2C_DEVICE_MAX_NUM; i++) {
-            i2c_bus[port] = NULL;
-            sg_i2c_dev_map[port][i].i2c_dev_handle = NULL;
-            memset(&sg_i2c_dev_map[port][i].i2c_dev_cfg, 0, sizeof(i2c_device_config_t));
-        }
+        memset(&i2c_dev_cfg[port], 0, sizeof(i2c_device_config_t));
     }
 
-    for (i = 0; i < I2C_DEVICE_MAX_NUM; i++) {
-        if (0 == sg_i2c_dev_map[port][i].i2c_dev_cfg.scl_speed_hz) {
-            switch (cfg->speed) {
-                case TUYA_IIC_BUS_SPEED_100K:
-                    sg_i2c_dev_map[port][i].i2c_dev_cfg.scl_speed_hz = 100000;
-                    break;
-                case TUYA_IIC_BUS_SPEED_400K:
-                    sg_i2c_dev_map[port][i].i2c_dev_cfg.scl_speed_hz = 400000;
-                    break;
-                case TUYA_IIC_BUS_SPEED_1M:
-                    sg_i2c_dev_map[port][i].i2c_dev_cfg.scl_speed_hz = 1000000;
-                    break;
-                case TUYA_IIC_BUS_SPEED_3_4M:
-                    sg_i2c_dev_map[port][i].i2c_dev_cfg.scl_speed_hz = 3400000;
-                    break;
-                default:
-                    sg_i2c_dev_map[port][i].i2c_dev_cfg.scl_speed_hz = 100000;
-                    break;
-            }
-            if (cfg->addr_width == TUYA_IIC_ADDRESS_7BIT) {
-                sg_i2c_dev_map[port][i].i2c_dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
-            } else {
-                ESP_LOGE(TAG, "Not support 10bit address mode");
-                return OPRT_NOT_SUPPORTED;
-            }
+    switch (cfg->speed) {
+        case TUYA_IIC_BUS_SPEED_100K:
+            i2c_dev_cfg[port].scl_speed_hz = 100000;
             break;
-        }
+        case TUYA_IIC_BUS_SPEED_400K:
+            i2c_dev_cfg[port].scl_speed_hz = 400000;
+            break;
+        case TUYA_IIC_BUS_SPEED_1M:
+            i2c_dev_cfg[port].scl_speed_hz = 1000000;
+            break;
+        case TUYA_IIC_BUS_SPEED_3_4M:
+            i2c_dev_cfg[port].scl_speed_hz = 3400000;
+            break;
+        default:
+            i2c_dev_cfg[port].scl_speed_hz = 100000;
+            break;
     }
+    if (cfg->addr_width == TUYA_IIC_ADDRESS_7BIT) {
+        i2c_dev_cfg[port].dev_addr_length = I2C_ADDR_BIT_LEN_7;
+    } else {
+        ESP_LOGE(TAG, "Not support 10bit address mode");
+        return OPRT_NOT_SUPPORTED;
+    }
+
     // initialize i2c bus
     i2c_master_bus_config_t i2c_bus_cfg = {
         .i2c_port = port,
@@ -177,13 +164,8 @@ OPERATE_RET tkl_i2c_deinit(TUYA_I2C_NUM_E port)
     }
     
     i2c_del_master_bus(i2c_bus[port]);
-    for (uint8_t i = 0; i < I2C_DEVICE_MAX_NUM; i++) {
-        if (sg_i2c_dev_map[port][i].i2c_dev_handle == NULL) {
-            continue;
-        }
-        ESP_ERROR_CHECK(i2c_master_bus_rm_device(sg_i2c_dev_map[port][i].i2c_dev_handle));
-        sg_i2c_dev_map[port][i].i2c_dev_handle = NULL;
-    }
+    i2c_bus[port] = NULL;
+
     return OPRT_OK;
 }
 
@@ -237,27 +219,27 @@ OPERATE_RET tkl_i2c_irq_disable(TUYA_I2C_NUM_E port)
  */
 OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const void *data, uint32_t size, BOOL_T xfer_pending)
 {
-    uint8_t i = 0;
     i2c_master_dev_handle_t dev_handle;
 
-    if (port >= I2C_DEVICE_MAX_NUM || i2c_bus[port] == NULL) {
+    if (port >= TUYA_I2C_NUM_MAX || i2c_bus[port] == NULL) {
         return OPRT_INVALID_PARM;
     }
 
-    for (i = 0; i < I2C_DEVICE_MAX_NUM; i++) {
-        if (sg_i2c_dev_map[port][i].i2c_dev_handle == NULL) {   // Add an new device
-            sg_i2c_dev_map[port][i].i2c_dev_cfg.device_address = dev_addr;                              
-            ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus[port], &(sg_i2c_dev_map[port][i].i2c_dev_cfg), &dev_handle));
-            sg_i2c_dev_map[port][i].i2c_dev_handle = dev_handle;
-            break;
+    if (0 == size) {
+        esp_err_t esp_rt = i2c_master_probe(i2c_bus[port], dev_addr, 100);
+        if (esp_rt == ESP_OK) {
+            return OPRT_OK;
         } else {
-            if (sg_i2c_dev_map[port][i].i2c_dev_cfg.device_address == dev_addr) {
-                break;
-            }
+            return OPRT_COM_ERROR;
         }
     }
 
-    ESP_ERROR_CHECK(i2c_master_transmit(sg_i2c_dev_map[port][i].i2c_dev_handle, data, size, -1));
+    i2c_dev_cfg[port].device_address = dev_addr;
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus[port], &i2c_dev_cfg[port], &dev_handle));
+
+    ESP_ERROR_CHECK(i2c_master_transmit(dev_handle, data, size, -1));
+
+    ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
     return OPRT_OK;
 }
 
@@ -274,27 +256,18 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const vo
 OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void *data, uint32_t size,
                                    BOOL_T xfer_pending)
 {
-    uint8_t i = 0;
     i2c_master_dev_handle_t dev_handle;
 
-    if (port >= I2C_DEVICE_MAX_NUM || i2c_bus[port] == NULL) {
+    if (port >= TUYA_I2C_NUM_MAX || i2c_bus[port] == NULL) {
         return OPRT_INVALID_PARM;
     }
 
-    for (i = 0; i < I2C_DEVICE_MAX_NUM; i++) {
-        if (sg_i2c_dev_map[port][i].i2c_dev_handle == NULL) {   // Add an new device
-            sg_i2c_dev_map[port][i].i2c_dev_cfg.device_address = dev_addr;                              
-            ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus[port], &(sg_i2c_dev_map[port][i].i2c_dev_cfg), &dev_handle));
-            sg_i2c_dev_map[port][i].i2c_dev_handle = dev_handle;
-            break;
-        } else {
-            if (sg_i2c_dev_map[port][i].i2c_dev_cfg.device_address == dev_addr) {
-                break;
-            }
-        }
-    }
+    i2c_dev_cfg[port].device_address = dev_addr;
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus[port], &i2c_dev_cfg[port], &dev_handle));
 
-    ESP_ERROR_CHECK(i2c_master_receive(sg_i2c_dev_map[port][i].i2c_dev_handle, data, size, -1));
+    ESP_ERROR_CHECK(i2c_master_receive(dev_handle, data, size, -1));
+
+    ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
     return OPRT_OK;
 }
 /**
