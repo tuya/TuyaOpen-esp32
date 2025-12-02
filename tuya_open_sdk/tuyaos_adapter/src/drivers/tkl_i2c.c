@@ -3,6 +3,10 @@
  * @brief tkl_i2c module is used to 
  * @version 0.1
  * @date 2025-09-18
+ * 
+ * @version 0.2
+ * @date 2025-12-02
+ * ve2opn: Modifyed with Timeout
  */
 #include "tkl_i2c.h"
 #include "tkl_pinmux.h"
@@ -16,6 +20,7 @@
 ************************macro define************************
 ***********************************************************/
 #define TAG "tkl_i2c"
+#define I2C_TIMEOUT_MS 1000  // Default timeout in milliseconds
 
 /***********************************************************
 ***********************typedef define***********************
@@ -220,26 +225,42 @@ OPERATE_RET tkl_i2c_irq_disable(TUYA_I2C_NUM_E port)
 OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const void *data, uint32_t size, BOOL_T xfer_pending)
 {
     i2c_master_dev_handle_t dev_handle;
+    esp_err_t esp_rt;
 
     if (port >= TUYA_I2C_NUM_MAX || i2c_bus[port] == NULL) {
         return OPRT_INVALID_PARM;
     }
 
     if (0 == size) {
-        esp_err_t esp_rt = i2c_master_probe(i2c_bus[port], dev_addr, 100);
+        esp_rt = i2c_master_probe(i2c_bus[port], dev_addr, I2C_TIMEOUT_MS);
         if (esp_rt == ESP_OK) {
             return OPRT_OK;
         } else {
+            ESP_LOGE(TAG, "I2C probe failed: %s", esp_err_to_name(esp_rt));
             return OPRT_COM_ERROR;
         }
     }
 
     i2c_dev_cfg[port].device_address = dev_addr;
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus[port], &i2c_dev_cfg[port], &dev_handle));
+    esp_rt = i2c_master_bus_add_device(i2c_bus[port], &i2c_dev_cfg[port], &dev_handle);
+    if (esp_rt != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add I2C device: %s", esp_err_to_name(esp_rt));
+        return OPRT_COM_ERROR;
+    }
 
-    ESP_ERROR_CHECK(i2c_master_transmit(dev_handle, data, size, -1));
+    esp_rt = i2c_master_transmit(dev_handle, data, size, I2C_TIMEOUT_MS);
+    if (esp_rt != ESP_OK) {
+        ESP_LOGE(TAG, "I2C transmit failed: %s", esp_err_to_name(esp_rt));
+        i2c_master_bus_rm_device(dev_handle);
+        return OPRT_COM_ERROR;
+    }
 
-    ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
+    esp_rt = i2c_master_bus_rm_device(dev_handle);
+    if (esp_rt != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to remove I2C device: %s", esp_err_to_name(esp_rt));
+        return OPRT_COM_ERROR;
+    }
+    
     return OPRT_OK;
 }
 
@@ -257,17 +278,32 @@ OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void 
                                    BOOL_T xfer_pending)
 {
     i2c_master_dev_handle_t dev_handle;
+    esp_err_t esp_rt;
 
     if (port >= TUYA_I2C_NUM_MAX || i2c_bus[port] == NULL) {
         return OPRT_INVALID_PARM;
     }
 
     i2c_dev_cfg[port].device_address = dev_addr;
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus[port], &i2c_dev_cfg[port], &dev_handle));
+    esp_rt = i2c_master_bus_add_device(i2c_bus[port], &i2c_dev_cfg[port], &dev_handle);
+    if (esp_rt != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add I2C device: %s", esp_err_to_name(esp_rt));
+        return OPRT_COM_ERROR;
+    }
 
-    ESP_ERROR_CHECK(i2c_master_receive(dev_handle, data, size, -1));
+    esp_rt = i2c_master_receive(dev_handle, data, size, I2C_TIMEOUT_MS);
+    if (esp_rt != ESP_OK) {
+        ESP_LOGE(TAG, "I2C receive failed: %s", esp_err_to_name(esp_rt));
+        i2c_master_bus_rm_device(dev_handle);
+        return OPRT_COM_ERROR;
+    }
 
-    ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
+    esp_rt = i2c_master_bus_rm_device(dev_handle);
+    if (esp_rt != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to remove I2C device: %s", esp_err_to_name(esp_rt));
+        return OPRT_COM_ERROR;
+    }
+    
     return OPRT_OK;
 }
 /**
