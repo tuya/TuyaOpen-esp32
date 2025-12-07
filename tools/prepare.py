@@ -128,9 +128,9 @@ def copy_idf_tools_py(root):
 
 def install_target(target):
     if get_country_code() != "China":
-        os.environ["IDF_GITHUB_ASSETS"] = "dl.espressif.cn/github_assets"
-    else:
         os.environ["IDF_GITHUB_ASSETS"] = "dl.espressif.com/github_assets"
+    else:
+        os.environ["IDF_GITHUB_ASSETS"] = "dl.espressif.cn/github_assets"
 
     idf_path = os.environ["IDF_PATH"]
     
