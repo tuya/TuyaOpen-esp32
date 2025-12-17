@@ -31,7 +31,7 @@ typedef void (*tuya_pin_irq_cb)(void *args);
 
 typedef struct {
     int gpio;
-	tuya_pin_irq_cb cb;
+    tuya_pin_irq_cb cb;
     void *args;
 } pin_dev_map_t;
 
@@ -74,56 +74,130 @@ static pin_dev_map_t pinmap[] = {
     #endif
 };
 
+/**
+ * @brief Initialize a GPIO pin according to Tuya GPIO configuration
+ * 
+ * This function maps all Tuya GPIO modes to ESP32 native GPIO configuration.
+ * Supports all modes defined in TUYA_GPIO_MODE_E.
+ * 
+ * @param pin_id Tuya GPIO pin identifier
+ * @param cfg Pointer to GPIO configuration structure
+ * @return OPERATE_RET OPRT_OK on success, error code on failure
+ */
 OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cfg)
 {
     esp_err_t ret;
     int gpio_num;
-    gpio_mode_t gpio_dir;
-    gpio_pull_mode_t pull_type;
+    gpio_mode_t gpio_mode;
+    gpio_pullup_t pull_up = GPIO_PULLUP_DISABLE;
+    gpio_pulldown_t pull_down = GPIO_PULLDOWN_DISABLE;
 
     if (NULL == cfg) {
         return OPRT_INVALID_PARM;
     }
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
-	gpio_num = pinmap[pin_id].gpio;
+    gpio_num = pinmap[pin_id].gpio;
 
+    // Reset pin to default state
     gpio_reset_pin(gpio_num);
-    gpio_set_level(gpio_num, cfg->level);
 
-    gpio_dir = GPIO_MODE_DISABLE; 
-    switch (cfg->direct)  {
-    case TUYA_GPIO_INPUT:
-        gpio_dir = GPIO_MODE_INPUT;
-        break;
-    case TUYA_GPIO_OUTPUT:
-        gpio_dir = GPIO_MODE_OUTPUT;
-        break;
-    default:
+    // Map Tuya configuration to ESP32 GPIO configuration
+    if (cfg->direct == TUYA_GPIO_INPUT) {
+        // Handle input modes
+        gpio_mode = GPIO_MODE_INPUT;
+        
+        switch (cfg->mode) {
+            case TUYA_GPIO_PULLUP:          // 0 - Input with pull-up
+                pull_up = GPIO_PULLUP_ENABLE;
+                pull_down = GPIO_PULLDOWN_DISABLE;
+                break;
+                
+            case TUYA_GPIO_PULLDOWN:        // 1 - Input with pull-down
+                pull_up = GPIO_PULLUP_DISABLE;
+                pull_down = GPIO_PULLDOWN_ENABLE;
+                break;
+                
+            case TUYA_GPIO_HIGH_IMPEDANCE:  // 2 - High-impedance input
+            case TUYA_GPIO_FLOATING:        // 3 - Floating input
+            default:
+                // No pull-up or pull-down for high-impedance/floating
+                pull_up = GPIO_PULLUP_DISABLE;
+                pull_down = GPIO_PULLDOWN_DISABLE;
+                break;
+        }
+    } 
+    else if (cfg->direct == TUYA_GPIO_OUTPUT) {
+        // Handle output modes
+        switch (cfg->mode) {
+            case TUYA_GPIO_PUSH_PULL:           // 4 - Standard push-pull output
+                gpio_mode = GPIO_MODE_OUTPUT;
+                pull_up = GPIO_PULLUP_DISABLE;
+                pull_down = GPIO_PULLDOWN_DISABLE;
+                break;
+                
+            case TUYA_GPIO_OPENDRAIN:           // 5 - Open-drain without internal pull-up
+                gpio_mode = GPIO_MODE_OUTPUT_OD;
+                pull_up = GPIO_PULLUP_DISABLE;
+                pull_down = GPIO_PULLDOWN_DISABLE;
+                break;
+                
+            case TUYA_GPIO_OPENDRAIN_PULLUP:    // 6 - Open-drain with internal pull-up
+                gpio_mode = GPIO_MODE_INPUT_OUTPUT_OD;
+                pull_up = GPIO_PULLUP_ENABLE;
+                pull_down = GPIO_PULLDOWN_DISABLE;
+                break;
+                
+            default:
+                // Default to push-pull if invalid mode specified for output
+                gpio_mode = GPIO_MODE_OUTPUT;
+                pull_up = GPIO_PULLUP_DISABLE;
+                pull_down = GPIO_PULLDOWN_DISABLE;
+                ESP_LOGW(DBG_TAG, "%s: Invalid output mode %d for pin %d, defaulting to PUSH_PULL", 
+                         __func__, cfg->mode, gpio_num);
+                break;
+        }
+        
+        // Set initial output level
+        gpio_set_level(gpio_num, cfg->level);
+    } 
+    else {
+        // Invalid direction
+        ESP_LOGE(DBG_TAG, "%s: Invalid GPIO direction %d for pin %d", 
+                 __func__, cfg->direct, gpio_num);
         return OPRT_NOT_SUPPORTED;
     }
-    ret = gpio_set_direction(gpio_num, gpio_dir);
-    if (ESP_OK != ret) {
-        ESP_LOGE(DBG_TAG, "%s: call gpio_set_direction failed(ret=%d)", __func__, ret);
-        return OPRT_COM_ERROR;
+
+    // Configure GPIO using ESP32's unified gpio_config API
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << gpio_num),
+        .mode = gpio_mode,
+        .pull_up_en = pull_up,
+        .pull_down_en = pull_down,
+        .intr_type = GPIO_INTR_DISABLE  // Interrupts handled separately
+    };
+    
+    ret = gpio_config(&io_conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(DBG_TAG, "%s: gpio_config failed for pin %d: %s (0x%x)", 
+                 __func__, gpio_num, esp_err_to_name(ret), ret);
+        
+        // Map ESP32 error to Tuya error code
+        switch (ret) {
+            case ESP_ERR_INVALID_ARG:
+                return OPRT_INVALID_PARM;
+            case ESP_ERR_NOT_SUPPORTED:
+                return OPRT_NOT_SUPPORTED;
+            default:
+                return OPRT_COM_ERROR;
+        }
     }
 
-	pull_type = GPIO_FLOATING; 
-    switch (cfg->mode) {
-    case TUYA_GPIO_PULLUP:
-		pull_type = GPIO_PULLUP_ONLY;
-        break;
-    case TUYA_GPIO_PULLDOWN:
-		pull_type = GPIO_PULLDOWN_ONLY;
-        break;
-    default:
-        return OPRT_NOT_SUPPORTED;
-    }
-    ret = gpio_set_pull_mode(gpio_num, pull_type);
-    if (ESP_OK != ret) {
-        ESP_LOGE(DBG_TAG, "%s: call gpio_set_pull_mode failed(ret=%d)", __func__, ret);
-        return OPRT_COM_ERROR;
-    }
+    // Log successful configuration for debugging
+    ESP_LOGD(DBG_TAG, "%s: GPIO %d configured as %s mode %d (level: %d)", 
+             __func__, gpio_num,
+             (cfg->direct == TUYA_GPIO_INPUT) ? "INPUT" : "OUTPUT",
+             cfg->mode, cfg->level);
 
     return OPRT_OK;
 }
@@ -143,10 +217,37 @@ OPERATE_RET tkl_gpio_read(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_LEVEL_E *level)
 {
     int gpio_num;
 
+    if (level == NULL) {
+        return OPRT_INVALID_PARM;
+    }
+    
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
     gpio_num = pinmap[pin_id].gpio;
     
     *level = gpio_get_level(gpio_num);
+    return OPRT_OK;
+}
+
+/**
+ * @brief Toggle a GPIO pin (optional, not in original but useful)
+ * 
+ * @param pin_id Tuya GPIO pin identifier
+ * @return OPERATE_RET OPRT_OK on success, error code on failure
+ */
+OPERATE_RET tkl_gpio_toggle(TUYA_GPIO_NUM_E pin_id)
+{
+    int gpio_num;
+    TUYA_GPIO_LEVEL_E current_level;
+
+    PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
+    gpio_num = pinmap[pin_id].gpio;
+    
+    // Read current level
+    current_level = gpio_get_level(gpio_num);
+    
+    // Toggle to opposite level
+    gpio_set_level(gpio_num, !current_level);
+    
     return OPRT_OK;
 }
 
@@ -162,7 +263,7 @@ OPERATE_RET tkl_gpio_read(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_LEVEL_E *level)
 OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_IRQ_T *cfg)
 {
     int gpio_num;
-    int trigger;
+    gpio_int_type_t trigger;
     esp_err_t ret;
 
     if (NULL == cfg) {
@@ -173,7 +274,7 @@ OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_IRQ_T *cfg
 
     pinmap[pin_id].cb = cfg->cb;
     pinmap[pin_id].args = cfg->arg;
-	gpio_num = pinmap[pin_id].gpio;	
+    gpio_num = pinmap[pin_id].gpio;	
 
     switch (cfg->mode) {
     case TUYA_GPIO_IRQ_RISE:
@@ -193,7 +294,7 @@ OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_IRQ_T *cfg
         break;
     default: 
         return OPRT_NOT_SUPPORTED;
-    } /* end switch (cfg->mode) { */
+    }
 
     ret = gpio_set_intr_type(gpio_num, trigger);
     if (ESP_OK != ret) {
@@ -201,18 +302,21 @@ OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_IRQ_T *cfg
         return OPRT_COM_ERROR;
     }
 
+    // Configure as input (required for interrupts)
     ret = gpio_set_direction(gpio_num, GPIO_MODE_INPUT);
     if (ESP_OK != ret) {
         ESP_LOGE(DBG_TAG, "%s: call gpio_set_direction failed(ret=%d)", __func__, ret);
         return OPRT_COM_ERROR;
     }
 
+    // Install ISR service if not already installed
     ret = gpio_install_isr_service(0);
-    if (ESP_OK != ret) {
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
         ESP_LOGE(DBG_TAG, "%s: call gpio_install_isr_service failed(ret=%d)", __func__, ret);
         return OPRT_COM_ERROR;
     }
 
+    // Add ISR handler
     ret = gpio_isr_handler_add(gpio_num, pinmap[pin_id].cb, pinmap[pin_id].args);
     if (ESP_OK != ret) {
         ESP_LOGE(DBG_TAG, "%s: call gpio_isr_handler_add failed(ret=%d)", __func__, ret);
@@ -236,6 +340,7 @@ OPERATE_RET tkl_gpio_irq_enable(TUYA_GPIO_NUM_E pin_id)
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
     gpio_num = pinmap[pin_id].gpio;
+    
     ret = gpio_intr_enable(gpio_num);
     if (ESP_OK != ret) {
         ESP_LOGE(DBG_TAG, "%s: call gpio_intr_enable failed(ret=%d)", __func__, ret);
@@ -255,25 +360,46 @@ OPERATE_RET tkl_gpio_irq_enable(TUYA_GPIO_NUM_E pin_id)
 OPERATE_RET tkl_gpio_irq_disable(TUYA_GPIO_NUM_E pin_id)
 {
     int gpio_num;
+    esp_err_t ret;
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
     gpio_num = pinmap[pin_id].gpio;
     
-    gpio_intr_disable(gpio_num);
+    ret = gpio_intr_disable(gpio_num);
+    if (ESP_OK != ret) {
+        ESP_LOGE(DBG_TAG, "%s: call gpio_intr_disable failed(ret=%d)", __func__, ret);
+        return OPRT_COM_ERROR;
+    }
     
     return OPRT_OK;    
 }
 
+/**
+ * @brief Deinitialize a GPIO pin
+ * 
+ * @param pin_id Tuya GPIO pin identifier
+ * @return OPERATE_RET OPRT_OK on success, error code on failure
+ */
 OPERATE_RET tkl_gpio_deinit(TUYA_GPIO_NUM_E pin_id)
 {
     int gpio_num;
+    esp_err_t ret;
     
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
     gpio_num = pinmap[pin_id].gpio;
 
-    gpio_isr_handler_remove(gpio_num);
-    gpio_uninstall_isr_service();
+    // Remove ISR handler if it exists
+    ret = gpio_isr_handler_remove(gpio_num);
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_ARG) {
+        ESP_LOGE(DBG_TAG, "%s: call gpio_isr_handler_remove failed(ret=%d)", __func__, ret);
+    }
+
+    // Reset pin to default state
     gpio_reset_pin(gpio_num);
+    
+    // Clear callback pointers
+    pinmap[pin_id].cb = NULL;
+    pinmap[pin_id].args = NULL;
     
     return OPRT_OK;
 }
