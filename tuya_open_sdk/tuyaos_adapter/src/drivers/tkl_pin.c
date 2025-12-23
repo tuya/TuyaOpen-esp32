@@ -157,9 +157,6 @@ OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cf
                          __func__, cfg->mode, gpio_num);
                 break;
         }
-        
-        // Set initial output level
-        gpio_set_level(gpio_num, cfg->level);
     } 
     else {
         // Invalid direction
@@ -191,6 +188,11 @@ OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cf
             default:
                 return OPRT_COM_ERROR;
         }
+    }
+
+    // Set initial output level ONLY AFTER pin is properly configured
+    if (cfg->direct == TUYA_GPIO_OUTPUT) {
+        gpio_set_level(gpio_num, cfg->level);
     }
 
     // Log successful configuration for debugging
