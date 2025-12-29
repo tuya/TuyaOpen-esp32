@@ -231,29 +231,6 @@ OPERATE_RET tkl_gpio_read(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_LEVEL_E *level)
 }
 
 /**
- * @brief Toggle a GPIO pin (optional, not in original but useful)
- * 
- * @param pin_id Tuya GPIO pin identifier
- * @return OPERATE_RET OPRT_OK on success, error code on failure
- */
-OPERATE_RET tkl_gpio_toggle(TUYA_GPIO_NUM_E pin_id)
-{
-    int gpio_num;
-    TUYA_GPIO_LEVEL_E current_level;
-
-    PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
-    gpio_num = pinmap[pin_id].gpio;
-    
-    // Read current level
-    current_level = gpio_get_level(gpio_num);
-    
-    // Toggle to opposite level
-    gpio_set_level(gpio_num, !current_level);
-    
-    return OPRT_OK;
-}
-
-/**
  * @brief gpio irq init
  * NOTE: call this API will not enable interrupt
  * 
