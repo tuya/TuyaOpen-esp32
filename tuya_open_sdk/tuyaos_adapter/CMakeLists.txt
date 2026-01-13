@@ -61,6 +61,7 @@ set(include_dirs
     "include/utilities/include"
     "include/vad"
     "include/asr"
+    "include/media"
     )
 
 if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
