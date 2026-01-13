@@ -22,9 +22,6 @@ typedef enum {
     TKL_ASR_WAKEUP_WORD_UNKNOWN,
     TKL_ASR_WAKEUP_NIHAO_TUYA,
     TKL_ASR_WAKEUP_NIHAO_XIAOZHI,
-    TKL_ASR_WAKEUP_HEY_TUYA,
-    TKL_ASR_WAKEUP_SMARTLIFE, 
-    TKL_ASR_WAKEUP_ZHINENGGUANJIA,
     TKL_ASR_WAKEUP_XIAOZHI_TONGXUE,
     TKL_ASR_WAKEUP_XIAOZHI_GUANJIA,
     TKL_ASR_WAKEUP_XIAOAI_XIAOAI,
@@ -32,15 +29,13 @@ typedef enum {
     TKL_ASR_WAKEUP_WORD_MAX,
 } TKL_ASR_WAKEUP_WORD_E;
 
-typedef void (*TKL_ASR_WAKEUP_CB)(TKL_ASR_WAKEUP_WORD_E wakeup_word);
-
 OPERATE_RET tkl_asr_init(void);
 
-OPERATE_RET tkl_asr_reg_wakeup_cb(TKL_ASR_WAKEUP_CB wakeup_cb);
+OPERATE_RET tkl_asr_wakeup_word_config(TKL_ASR_WAKEUP_WORD_E *wakeup_word_arr, uint8_t arr_cnt);
 
-OPERATE_RET tkl_asr_enable(void);
+uint32_t tkl_asr_get_process_uint_size(void);
 
-OPERATE_RET tkl_asr_disable(void);
+TKL_ASR_WAKEUP_WORD_E tkl_asr_recognize_wakeup_word(uint8_t *data, uint32_t len);
 
 OPERATE_RET tkl_asr_deinit(void);
 
