@@ -29,6 +29,8 @@ list(APPEND SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_uart.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_watchdog.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_wifi.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_wired.c" # 有线
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_esp32s3Pwm.c" # esp32pwm
     )
 
 if(CONFIG_IDF_TARGET_ESP32S2)
@@ -58,6 +60,8 @@ set(include_dirs
     "include/utilities/include"
     "include/vad"
     "include/asr"
+    "include/wired" # 有线
+    "include/esp32s3Pwm" # esp32pwm
     )
 
 if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
@@ -81,8 +85,8 @@ endif()
 # message(STATUS "TUYAOS_ADAPTER_INCLUDE_DIRS: ${include_dirs}")
 
 idf_component_register(SRCS "${SOURCES}"
-                    INCLUDE_DIRS "${include_dirs}" 
-                    REQUIRES 
+                    INCLUDE_DIRS "${include_dirs}"
+                    REQUIRES
                         lvgl
                         esp_lvgl_port
                         esp_lcd
@@ -101,4 +105,12 @@ idf_component_register(SRCS "${SOURCES}"
                         driver
                         app_update
                         esp_lcd_touch_ft5x06
+                    PRIV_REQUIRES # 有线
+                        ethernet_init
+                        esp_driver_gpio
+                        esp_eth
+                        ethw5500
+                        esp_netif
+                        nvs_flash
+                        # bsp_pwm # pwm
                     )
