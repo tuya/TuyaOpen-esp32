@@ -26,7 +26,7 @@
 #include "tkl_pwm.h"
 #include "tkl_output.h"
 
-#define PWM_DEV_NUM 5
+#define PWM_DEV_NUM 6
 
 typedef struct {
     unsigned int gpio_num;
@@ -34,6 +34,20 @@ typedef struct {
     unsigned int pwm_used_gpio;
     unsigned char  used;
 } PWM_CFG_T;
+
+typedef struct {
+    TUYA_GPIO_NUM_E pin;
+    ledc_channel_t  channel;
+} SR_PWM_GPIO_T;
+
+static SR_PWM_GPIO_T sg_pwm_gpio_map[] = {
+    {TUYA_IO_PIN_18, LEDC_CHANNEL_0},
+    {TUYA_IO_PIN_19, LEDC_CHANNEL_1},
+    {TUYA_IO_PIN_22, LEDC_CHANNEL_2},
+    {TUYA_IO_PIN_23, LEDC_CHANNEL_3},
+    {TUYA_IO_PIN_25, LEDC_CHANNEL_4},
+    {TUYA_IO_PIN_26, LEDC_CHANNEL_5},
+};
 
 #if 0
 PWM_CFG_T pwm_cfg_list[PWM_DEV_NUM] = {
@@ -132,6 +146,22 @@ static int pwm_ch_find_gpio(unsigned int ch_num, unsigned int *used_gpio)
 }
 #endif
 
+void __tkl_pwm_set_pin(TUYA_GPIO_NUM_E pin, TUYA_PWM_NUM_E channel)
+{
+    if (TUYA_PWM_NUM_MAX <= channel) {
+        return;
+    }
+
+    int i;
+    for (i = 0; i < sizeof(sg_pwm_gpio_map)/sizeof(SR_PWM_GPIO_T); i++) {
+        if (sg_pwm_gpio_map[i].channel == (ledc_channel_t)channel) {
+            sg_pwm_gpio_map[i].pin = pin;
+            break;
+        }
+    }
+    return;
+}
+
 /**
  * @brief pwm init
  * 
@@ -145,33 +175,41 @@ OPERATE_RET tkl_pwm_init(TUYA_PWM_NUM_E ch_id, const TUYA_PWM_BASE_CFG_T *cfg)
     ledc_channel_config_t ledc_ch_config;
     ledc_timer_config_t ledc_time_config;
 
+    uint32_t duty = cfg->duty;
+    duty = duty * 4096 / 10000; // convert to 12 bit
+
     memset(&ledc_ch_config, 0, sizeof(ledc_channel_config_t));
-    ledc_ch_config.gpio_num = 19;
+    ledc_ch_config.gpio_num = sg_pwm_gpio_map[ch_id].pin;
     ledc_ch_config.speed_mode = LEDC_LOW_SPEED_MODE;
-    ledc_ch_config.channel  = LEDC_CHANNEL_0;
+    ledc_ch_config.channel  = sg_pwm_gpio_map[ch_id].channel;
     ledc_ch_config.intr_type = LEDC_INTR_DISABLE;
     ledc_ch_config.timer_sel = LEDC_TIMER_0;
-    ledc_ch_config.duty = 4000;
+    ledc_ch_config.duty = duty;
     ledc_ch_config.hpoint = 0;
 
     memset(&ledc_time_config, 0, sizeof(ledc_timer_config_t));
     ledc_time_config.speed_mode = LEDC_LOW_SPEED_MODE;
-    ledc_time_config.duty_resolution = LEDC_TIMER_13_BIT;
+    ledc_time_config.duty_resolution = LEDC_TIMER_12_BIT;
     ledc_time_config.timer_num = LEDC_TIMER_0;
-    ledc_time_config.freq_hz = 2000;
+    ledc_time_config.freq_hz = cfg->frequency;
     ledc_time_config.clk_cfg = 0;
 
-    ledc_channel_config(&ledc_ch_config);
-    ledc_timer_config(&ledc_time_config);
-
-    ledc_set_pin(19, LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-    return OPRT_NOT_SUPPORTED;
+    if (ledc_timer_config(&ledc_time_config) != ESP_OK) {
+        return OPRT_COM_ERROR;
+    }
+    if (ledc_channel_config(&ledc_ch_config) != ESP_OK) {
+        return OPRT_COM_ERROR;
+    }
+    return OPRT_OK;
 }
 
 OPERATE_RET tkl_pwm_start(TUYA_PWM_NUM_E ch_id)
 {
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, ch_id, LEDC_FADE_NO_WAIT);
-    return OPRT_NOT_SUPPORTED;
+    if (ledc_set_pin(sg_pwm_gpio_map[ch_id].pin, LEDC_LOW_SPEED_MODE, sg_pwm_gpio_map[ch_id].channel) != ESP_OK) {
+        return OPRT_COM_ERROR;
+    }
+    
+    return OPRT_OK;
 }
 
 OPERATE_RET tkl_pwm_stop(TUYA_PWM_NUM_E ch_id)
