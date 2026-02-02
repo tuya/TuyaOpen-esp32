@@ -60,7 +60,7 @@ set(include_dirs
     "include/wifi"
     "include/utilities/include"
     "include/vad"
-    "include/asr"
+    "include/kws"
     "include/media"
     )
 
