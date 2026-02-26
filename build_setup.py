@@ -12,6 +12,7 @@ SUPPORT_CHIPS = [
     "esp32",
     "esp32c3",
     "esp32s3",
+    "esp32c6"
 ]
 
 

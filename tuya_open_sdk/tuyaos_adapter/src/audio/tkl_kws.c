@@ -1,10 +1,9 @@
 /**
- * @file tkl_vad.c
- * @brief tkl_vad module is used to 
+ * @file tkl_kws.c
+ * @brief tkl_kws module is used to 
  * @version 0.1
  * @date 2025-04-15
  */
-
 #include "tuya_cloud_types.h"
 
 #include "audio_afe.h"
@@ -12,81 +11,73 @@
 #include "esp_err.h"
 #include "esp_log.h"
 
-#include "tkl_vad.h"
+#include "tkl_kws.h"
 
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
-#define TAG "tkl_vad"
-
+#define TAG "tkl_kws"
 
 /***********************************************************
 ***********************typedef define***********************
 ***********************************************************/
 
+
 /***********************************************************
 ********************function declaration********************
 ***********************************************************/
 
+
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
-static TKL_VAD_STATUS_T sg_vad_state = TKL_VAD_STATUS_NONE;
+static TKL_KWS_WAKEUP_CB sg_wakeup_cb = NULL;
+static bool sg_is_kws_enable = false;
 
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
-void __get_vad_state_cb(vad_state_t state)
+static void __afe_wakeup_callback(void)
 {
-    if(state == VAD_SPEECH) {
-        sg_vad_state = TKL_VAD_STATUS_SPEECH;
-    }else {
-        sg_vad_state = TKL_VAD_STATUS_NONE;
+    if(true == sg_is_kws_enable && sg_wakeup_cb) {
+        sg_wakeup_cb(TKL_KWS_WAKEUP_NIHAO_XIAOZHI);
     }
 }
 
-OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
+OPERATE_RET tkl_kws_init(void)
 {
-    OPERATE_RET rt = OPRT_OK;
+    auio_afe_register_wakeup_cb(__afe_wakeup_callback);
 
-    auio_afe_register_vad_cb(__get_vad_state_cb);
-
-    return rt;
+    return OPRT_OK;
 }
 
-TKL_VAD_STATUS_T tkl_vad_get_status(void)
+OPERATE_RET tkl_kws_reg_wakeup_cb(TKL_KWS_WAKEUP_CB wakeup_cb)
 {
-    return sg_vad_state;
+    sg_wakeup_cb = wakeup_cb;
+
+    return OPRT_OK;
 }
 
-OPERATE_RET tkl_vad_start(void)
+OPERATE_RET tkl_kws_enable(void)
 {
-    OPERATE_RET rt = OPRT_OK;
+    sg_is_kws_enable = true;
 
-    auio_afe_processor_start();
-
-    return rt;
+    return OPRT_OK;
 }
 
-OPERATE_RET tkl_vad_stop(void)
+OPERATE_RET tkl_kws_disable(void)
 {
-    OPERATE_RET rt = OPRT_OK;
+    sg_is_kws_enable = false;
 
-    auio_afe_processor_end();
-
-    sg_vad_state = TKL_VAD_STATUS_NONE;
-
-    return rt;
+    return OPRT_OK;
 }
 
-OPERATE_RET tkl_vad_deinit(void)
-{
-    OPERATE_RET rt = OPRT_OK;
-
-    return rt;
-}
-
-OPERATE_RET tkl_vad_set_threshold(TKL_AUDIO_VAD_THRESHOLD_E level)
+OPERATE_RET tkl_kws_deinit(void)
 {
     return OPRT_OK;
 }
+
+
+
+
+

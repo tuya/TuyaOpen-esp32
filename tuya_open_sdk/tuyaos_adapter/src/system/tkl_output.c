@@ -47,9 +47,11 @@ void tkl_log_output(const char *format, ...)
     va_start(ap, format);
     vsnprintf(s_output_buf, MAX_SIZE_OF_DEBUG_BUF,format,ap);
     va_end(ap);
-    printf("%s", format);
+    // printf("%s", format);
+    esp_rom_printf("%s", format);
 #else
-    printf("%s", format);
+    // printf("%s", format);
+    esp_rom_printf("%s", format);
 #endif
     // --- END: user implements ---
 }

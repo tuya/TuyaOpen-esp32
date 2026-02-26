@@ -1,6 +1,5 @@
 /**
  * @file tkl_vad.h
- * @brief tkl_vad module is used to 
  * @version 0.1
  * @date 2025-04-15
  */
@@ -18,7 +17,6 @@ extern "C" {
 ************************macro define************************
 ***********************************************************/
 
-
 /***********************************************************
 ***********************typedef define***********************
 ***********************************************************/
@@ -32,16 +30,22 @@ typedef struct {
 } TKL_VAD_CONFIG_T;
 
 typedef uint8_t TKL_VAD_STATUS_T;
-#define TKL_VAD_STATUS_NONE 0
+#define TKL_VAD_STATUS_NONE   0
 #define TKL_VAD_STATUS_SPEECH 1
+
+typedef enum {
+    TKL_AUDIO_VAD_HIGH,
+    TKL_AUDIO_VAD_MID,
+    TKL_AUDIO_VAD_LOW,
+} TKL_AUDIO_VAD_THRESHOLD_E;
 
 /***********************************************************
 ********************function declaration********************
 ***********************************************************/
 
-OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config);
+OPERATE_RET tkl_vad_set_threshold(TKL_AUDIO_VAD_THRESHOLD_E level);
 
-OPERATE_RET tkl_vad_feed(uint8_t *data, uint32_t len);
+OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config);
 
 TKL_VAD_STATUS_T tkl_vad_get_status(void);
 
