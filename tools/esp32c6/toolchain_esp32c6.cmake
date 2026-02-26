@@ -1,0 +1,24 @@
+
+# set target system
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_PROCESSOR Linux)
+
+# set toolchain
+set(TOOLCHAIN_DIR "${IDF_TOOLS_PATH}/tools/riscv32-esp-elf/esp-14.2.0_20241119/riscv32-esp-elf/bin")
+set(TOOLCHAIN_PRE "riscv32-esp-elf-")
+
+IF (WIN32)
+    set(CMAKE_AR "${TOOLCHAIN_DIR}/${TOOLCHAIN_PRE}ar.exe")
+    set(CMAKE_C_COMPILER "${TOOLCHAIN_DIR}/${TOOLCHAIN_PRE}gcc.exe")
+    set(CMAKE_CXX_COMPILER "${TOOLCHAIN_DIR}/${TOOLCHAIN_PRE}g++.exe")
+ELSE ()
+    set(CMAKE_AR "${TOOLCHAIN_DIR}/${TOOLCHAIN_PRE}ar")
+    set(CMAKE_C_COMPILER "${TOOLCHAIN_DIR}/${TOOLCHAIN_PRE}gcc")
+    set(CMAKE_CXX_COMPILER "${TOOLCHAIN_DIR}/${TOOLCHAIN_PRE}g++")
+ENDIF ()
+
+SET (CMAKE_C_COMPILER_WORKS 1)
+SET (CMAKE_CXX_COMPILER_WORKS 1)
+
+# set CFLAGS
+set(CMAKE_C_FLAGS " -march=rv32imac_zicsr_zifencei  -fdiagnostics-color=always -fdiagnostics-color=always -ffunction-sections -fdata-sections -Wall -Werror=all -Wno-error=unused-function -Wno-error=unused-variable -Wno-error=unused-but-set-variable -Wno-error=deprecated-declarations -Wextra -Wno-error=extra -Wno-unused-parameter -Wno-sign-compare -Wno-enum-conversion -gdwarf-4 -ggdb -nostartfiles -Os -freorder-blocks -fstrict-volatile-bitfields -fno-jump-tables -fno-tree-switch-conversion -Wno-error=incompatible-pointer-types -std=gnu17 -Wno-old-style-declaration -Wno-unused-variable -Wno-format")
