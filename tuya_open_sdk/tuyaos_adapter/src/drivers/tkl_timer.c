@@ -38,6 +38,8 @@ static TIMER_DEV_T s_timer_dev[TIMER_DEV_NUM] = {
         {NULL, NULL},{NULL, NULL},{NULL, NULL}
 };
 
+static TUYA_TIMER_NUM_E s_timer_handle_id[TIMER_DEV_NUM] = {0, 1, 2};
+
 #define CHECK_TIMER_PARAM(ID) do {                                  \
     if (ID >= TIMER_DEV_NUM) {                                      \
         return OPRT_INVALID_PARM;                                   \
@@ -50,12 +52,12 @@ static TIMER_DEV_T s_timer_dev[TIMER_DEV_NUM] = {
 static bool tkl_timer_handle(gptimer_handle_t timer, const gptimer_alarm_event_data_t *data, void *ctx)
 {
     TUYA_TIMER_NUM_E timer_id = *(TUYA_TIMER_NUM_E *)ctx;
-    if (timer_id >= TIMER_DEV_NUM) {                             
-        return OPRT_INVALID_PARM;                       
+    if (timer_id >= TIMER_DEV_NUM) {
+        return OPRT_INVALID_PARM;
     }
 
     if (s_timer_dev[timer_id].timer_cfg && s_timer_dev[timer_id].timer_cfg->cfg.cb) {
-        s_timer_dev[timer_id].timer_cfg->cfg.cb(ctx);
+        s_timer_dev[timer_id].timer_cfg->cfg.cb(s_timer_dev[timer_id].timer_cfg->cfg.args);
     }
 
     return OPRT_OK;
@@ -104,7 +106,7 @@ OPERATE_RET tkl_timer_init(TUYA_TIMER_NUM_E timer_id, TUYA_TIMER_BASE_CFG_T *cfg
     }
 
     s_timer_dev[timer_id].time_handle = timer_handle;
-   
+
     return OPRT_OK; 
 }
 
@@ -121,8 +123,8 @@ OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, uint32_t us)
     gptimer_alarm_config_t alarm_config;
     gptimer_event_callbacks_t alarm_cbs;
 
-    if (timer_id >= TIMER_DEV_NUM) {                             
-        return OPRT_INVALID_PARM;                       
+    if (timer_id >= TIMER_DEV_NUM) {
+        return OPRT_INVALID_PARM;
     } 
 
     if (NULL == s_timer_dev[timer_id].time_handle) {
@@ -137,7 +139,7 @@ OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, uint32_t us)
 
     gptimer_set_alarm_action(s_timer_dev[timer_id].time_handle, &alarm_config);
     alarm_cbs.on_alarm = tkl_timer_handle;
-    gptimer_register_event_callbacks(s_timer_dev[timer_id].time_handle, &alarm_cbs, &timer_id);
+    gptimer_register_event_callbacks(s_timer_dev[timer_id].time_handle, &alarm_cbs, &s_timer_handle_id[timer_id]);
     gptimer_enable(s_timer_dev[timer_id].time_handle);
     gptimer_start(s_timer_dev[timer_id].time_handle);
 
