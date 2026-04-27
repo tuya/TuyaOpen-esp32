@@ -249,10 +249,28 @@ int tkl_uart_read(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
 #define TKL_UART_NUM_0_CTS  (UART_PIN_NO_CHANGE)
 
 
-#define TKL_UART_NUM_1_TXD  (GPIO_NUM_17)
-#define TKL_UART_NUM_1_RXD  (GPIO_NUM_18)
+#if defined(CONFIG_IDF_TARGET_ESP32)
+static int sg_uart1_txd = GPIO_NUM_10;  /* IO_MUX native default */
+static int sg_uart1_rxd = GPIO_NUM_9;
+#elif defined(CONFIG_IDF_TARGET_ESP32C6)
+static int sg_uart1_txd = GPIO_NUM_6;   /* avoids conflict with UART0 default RX GPIO17 */
+static int sg_uart1_rxd = GPIO_NUM_7;
+#else
+static int sg_uart1_txd = GPIO_NUM_17;
+static int sg_uart1_rxd = GPIO_NUM_18;
+#endif
 #define TKL_UART_NUM_1_RTS  (UART_PIN_NO_CHANGE)
 #define TKL_UART_NUM_1_CTS  (UART_PIN_NO_CHANGE)
+
+void __tkl_uart1_set_txd_pin(TUYA_PIN_NAME_E pin)
+{
+    sg_uart1_txd = (int)pin;
+}
+
+void __tkl_uart1_set_rxd_pin(TUYA_PIN_NAME_E pin)
+{
+    sg_uart1_rxd = (int)pin;
+}
 
 TaskHandle_t tkl_uart_thread = NULL;
 TUYA_UART_IRQ_CB uart_rx_cb[MAX_UART_NUM];
@@ -378,8 +396,8 @@ OPERATE_RET tkl_uart_init(TUYA_UART_NUM_E port_id, TUYA_UART_BASE_CFG_T *cfg)
 #endif
 
     if (UART_NUM_1 == uart_num) {
-        uart_txd = TKL_UART_NUM_1_TXD;
-        uart_rxd = TKL_UART_NUM_1_RXD;
+        uart_txd = sg_uart1_txd;
+        uart_rxd = sg_uart1_rxd;
         uart_cts = TKL_UART_NUM_1_CTS;
         uart_rts = TKL_UART_NUM_1_RTS;
     } else {

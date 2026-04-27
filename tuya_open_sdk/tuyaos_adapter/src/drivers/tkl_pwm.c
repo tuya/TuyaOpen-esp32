@@ -41,12 +41,32 @@ typedef struct {
 } SR_PWM_GPIO_T;
 
 static SR_PWM_GPIO_T sg_pwm_gpio_map[] = {
+#if defined(CONFIG_IDF_TARGET_ESP32C3)
+    /* C3: GPIO range 0-21; GPIO12-17 are SPI flash, GPIO18-19 are USB-JTAG */
+    {TUYA_IO_PIN_18, LEDC_CHANNEL_0},
+    {TUYA_IO_PIN_19, LEDC_CHANNEL_1},
+    {TUYA_IO_PIN_3,  LEDC_CHANNEL_2},
+    {TUYA_IO_PIN_4,  LEDC_CHANNEL_3},
+    {TUYA_IO_PIN_5,  LEDC_CHANNEL_4},
+    {TUYA_IO_PIN_6,  LEDC_CHANNEL_5},
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+    /* S3: GPIO22-25 are NC; GPIO26-37 are SPI flash/PSRAM, not for general use */
+    {TUYA_IO_PIN_18, LEDC_CHANNEL_0},
+    {TUYA_IO_PIN_19, LEDC_CHANNEL_1},
+    {TUYA_IO_PIN_38, LEDC_CHANNEL_2},
+    {TUYA_IO_PIN_39, LEDC_CHANNEL_3},
+    {TUYA_IO_PIN_40, LEDC_CHANNEL_4},
+    {TUYA_IO_PIN_41, LEDC_CHANNEL_5},
+#else
+    /* ESP32 classic: GPIO34-39 are input-only; GPIO18/19/22/23/25/26 are all output-capable */
+    /* ESP32-C6: GPIO range 0-30; GPIO18/19/22/23/25/26 are all valid */
     {TUYA_IO_PIN_18, LEDC_CHANNEL_0},
     {TUYA_IO_PIN_19, LEDC_CHANNEL_1},
     {TUYA_IO_PIN_22, LEDC_CHANNEL_2},
     {TUYA_IO_PIN_23, LEDC_CHANNEL_3},
     {TUYA_IO_PIN_25, LEDC_CHANNEL_4},
     {TUYA_IO_PIN_26, LEDC_CHANNEL_5},
+#endif
 };
 
 #if 0
