@@ -41,6 +41,8 @@ typedef struct{
 extern void __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
 extern void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
 extern void __tkl_pwm_set_pin(TUYA_GPIO_NUM_E pin, TUYA_PWM_NUM_E channel);
+extern void __tkl_uart1_set_txd_pin(TUYA_PIN_NAME_E pin);
+extern void __tkl_uart1_set_rxd_pin(TUYA_PIN_NAME_E pin);
 /**
  * @brief tuya io pinmux func
  *
@@ -90,6 +92,13 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
             __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_5, pin);
             break;
 #endif
+        case TUYA_UART1_TX:
+            __tkl_uart1_set_txd_pin(pin);
+            break;
+        case TUYA_UART1_RX:
+            __tkl_uart1_set_rxd_pin(pin);
+            break;
+
         case TUYA_PWM0 :
             __tkl_pwm_set_pin(pin, TUYA_PWM_NUM_0);
             break;
