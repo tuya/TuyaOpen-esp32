@@ -14,6 +14,84 @@
 #include "tuya_error_code.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <stdint.h>
+#include <stdlib.h>
+#if CONFIG_IDF_TARGET_ESP32S3
+#include "esp_heap_caps.h"
+#endif
+
+typedef struct {
+    uint32_t magic;
+    TaskHandle_t task;
+    StackType_t *stack_buffer;
+    StaticTask_t *task_buffer;
+} PSRAM_THREAD_HANDLE_T;
+
+typedef struct {
+    TaskHandle_t task;
+} THREAD_HANDLE_T;
+
+typedef struct {
+    THREAD_FUNC_T entry;
+    void *arg;
+} THREAD_ENTRY_CTX_T;
+
+#define PSRAM_THREAD_MAGIC 0x5053524DU
+
+static uint32_t __tkl_thread_adjust_stack_size(uint32_t stack_size)
+{
+#if CONFIG_IDF_TARGET_ESP32
+#elif CONFIG_IDF_TARGET_ESP32S3
+    stack_size += 1024;
+#else
+#endif
+    return stack_size;
+}
+
+static PSRAM_THREAD_HANDLE_T *__tkl_thread_get_psram_handle(const TKL_THREAD_HANDLE thread)
+{
+    PSRAM_THREAD_HANDLE_T *handle = (PSRAM_THREAD_HANDLE_T *)thread;
+
+    if ((handle == NULL) || (handle->magic != PSRAM_THREAD_MAGIC)) {
+        return NULL;
+    }
+
+    return handle;
+}
+
+static TaskHandle_t __tkl_thread_get_task_handle(const TKL_THREAD_HANDLE thread)
+{
+    PSRAM_THREAD_HANDLE_T *psram_handle = __tkl_thread_get_psram_handle(thread);
+
+    if (thread == NULL) {
+        return NULL;
+    }
+
+    if (psram_handle != NULL) {
+        return psram_handle->task;
+    }
+
+    return ((THREAD_HANDLE_T *)thread)->task;
+}
+
+static void __tkl_thread_entry(void *arg)
+{
+    THREAD_ENTRY_CTX_T *ctx = (THREAD_ENTRY_CTX_T *)arg;
+    THREAD_FUNC_T entry = NULL;
+    void *entry_arg = NULL;
+
+    if (ctx != NULL) {
+        entry = ctx->entry;
+        entry_arg = ctx->arg;
+        free(ctx);
+    }
+
+    if (entry != NULL) {
+        entry(entry_arg);
+    }
+
+    vTaskDelete(NULL);
+}
 // --- END: user defines and implements ---
 
 /**
@@ -38,22 +116,36 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
                               void* const arg)
 {
     // --- BEGIN: user implements ---
-    if (!thread) {
+    THREAD_HANDLE_T *handle = NULL;
+    THREAD_ENTRY_CTX_T *entry_ctx = NULL;
+
+    if ((thread == NULL) || (func == NULL)) {
         return OPRT_INVALID_PARM;
     }
-    
-    BaseType_t ret = 0;
-    #if CONFIG_IDF_TARGET_ESP32
-    #elif CONFIG_IDF_TARGET_ESP32S3
-        stack_size += 1024;
-    #else
 
-    #endif
-    ret = xTaskCreate(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const)thread);
-    if (ret != pdPASS) {
+    handle = (THREAD_HANDLE_T *)malloc(sizeof(THREAD_HANDLE_T));
+    if (handle == NULL) {
+        return OPRT_MALLOC_FAILED;
+    }
+
+    entry_ctx = (THREAD_ENTRY_CTX_T *)malloc(sizeof(THREAD_ENTRY_CTX_T));
+    if (entry_ctx == NULL) {
+        free(handle);
+        return OPRT_MALLOC_FAILED;
+    }
+
+    entry_ctx->entry = func;
+    entry_ctx->arg = arg;
+
+    stack_size = __tkl_thread_adjust_stack_size(stack_size);
+
+    if (xTaskCreate(__tkl_thread_entry, name, stack_size / sizeof(portSTACK_TYPE), (void *const)entry_ctx, priority, &handle->task) != pdPASS) {
+        free(entry_ctx);
+        free(handle);
         return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
     }
 
+    *thread = (TKL_THREAD_HANDLE)handle;
     return OPRT_OK;
     // --- END: user implements ---
 }
@@ -70,12 +162,25 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
 OPERATE_RET tkl_thread_release(const TKL_THREAD_HANDLE thread)
 {
     // --- BEGIN: user implements ---
-    if (!thread) {
+    PSRAM_THREAD_HANDLE_T *psram_handle = __tkl_thread_get_psram_handle(thread);
+    THREAD_HANDLE_T *handle = (THREAD_HANDLE_T *)thread;
+
+    if (psram_handle != NULL) {
+        vTaskDelete(psram_handle->task);
+        psram_handle->magic = 0;
+        free(psram_handle->task_buffer);
+        free(psram_handle->stack_buffer);
+        free(psram_handle);
+        return OPRT_OK;
+    }
+
+    if (handle == NULL) {
         return OPRT_INVALID_PARM;
     }
-    
-    vTaskDelete((TaskHandle_t)thread);
-    
+
+    vTaskDelete(handle->task);
+    free(handle);
+
     return OPRT_OK;
     // --- END: user implements ---
 }
@@ -93,10 +198,18 @@ OPERATE_RET tkl_thread_release(const TKL_THREAD_HANDLE thread)
 OPERATE_RET tkl_thread_get_watermark(const TKL_THREAD_HANDLE thread, uint32_t* watermark)
 {
     // --- BEGIN: user implements ---
-    if (NULL == thread || NULL == watermark) {
+    TaskHandle_t task = NULL;
+
+    if ((thread == NULL) || (watermark == NULL)) {
         return OPRT_INVALID_PARM;
     }
-    *watermark = uxTaskGetStackHighWaterMark(thread) * sizeof( StackType_t );
+
+    task = __tkl_thread_get_task_handle(thread);
+    if (task == NULL) {
+        return OPRT_INVALID_PARM;
+    }
+
+    *watermark = uxTaskGetStackHighWaterMark(task) * sizeof(StackType_t);
     return OPRT_OK;
     // --- END: user implements ---
 }
@@ -113,7 +226,24 @@ OPERATE_RET tkl_thread_get_watermark(const TKL_THREAD_HANDLE thread, uint32_t* w
 OPERATE_RET tkl_thread_get_id(TKL_THREAD_HANDLE *thread)
 {
     // --- BEGIN: user implements ---
-    *thread = (TKL_THREAD_HANDLE)xTaskGetCurrentTaskHandle();
+    THREAD_HANDLE_T *handle = NULL;
+
+    if (thread == NULL) {
+        return OPRT_INVALID_PARM;
+    }
+
+    handle = (THREAD_HANDLE_T *)malloc(sizeof(THREAD_HANDLE_T));
+    if (handle == NULL) {
+        return OPRT_MALLOC_FAILED;
+    }
+
+    handle->task = xTaskGetCurrentTaskHandle();
+    if (handle->task == NULL) {
+        free(handle);
+        return OPRT_OS_ADAPTER_THRD_JUDGE_SELF_FAILED;
+    }
+
+    *thread = (TKL_THREAD_HANDLE)handle;
     return OPRT_OK;
     // --- END: user implements ---
 }
@@ -151,17 +281,25 @@ OPERATE_RET tkl_thread_set_self_name(const char* name)
 OPERATE_RET tkl_thread_is_self(TKL_THREAD_HANDLE thread, BOOL_T* is_self)
 {
     // --- BEGIN: user implements ---
-    if (NULL == thread || NULL == is_self) {
+    TaskHandle_t task = NULL;
+    TaskHandle_t self_task = NULL;
+
+    if ((thread == NULL) || (is_self == NULL)) {
         return OPRT_INVALID_PARM;
     }
 
-    TKL_THREAD_HANDLE self_handle = (TKL_THREAD_HANDLE)xTaskGetCurrentTaskHandle();
-    if (NULL == self_handle) {
+    self_task = xTaskGetCurrentTaskHandle();
+    if (self_task == NULL) {
         return OPRT_OS_ADAPTER_THRD_JUDGE_SELF_FAILED;
     }
 
-    *is_self = (thread == self_handle);
-	
+    task = __tkl_thread_get_task_handle(thread);
+    if (task == NULL) {
+        return OPRT_INVALID_PARM;
+    }
+
+    *is_self = (task == self_task);
+
     return OPRT_OK;
     // --- END: user implements ---
 }
@@ -179,11 +317,18 @@ OPERATE_RET tkl_thread_is_self(TKL_THREAD_HANDLE thread, BOOL_T* is_self)
 OPERATE_RET tkl_thread_get_priority(TKL_THREAD_HANDLE thread, int *priority)
 {
     // --- BEGIN: user implements ---
-    if (NULL == thread || NULL == priority) {
+    TaskHandle_t task = NULL;
+
+    if ((thread == NULL) || (priority == NULL)) {
         return OPRT_INVALID_PARM;
     }
 
-    *priority = (uint32_t)uxTaskPriorityGet((TaskHandle_t)thread);
+    task = __tkl_thread_get_task_handle(thread);
+    if (task == NULL) {
+        return OPRT_INVALID_PARM;
+    }
+
+    *priority = (int)uxTaskPriorityGet(task);
 
     return OPRT_OK;
     // --- END: user implements ---
@@ -202,11 +347,18 @@ OPERATE_RET tkl_thread_get_priority(TKL_THREAD_HANDLE thread, int *priority)
 OPERATE_RET tkl_thread_set_priority(TKL_THREAD_HANDLE thread, int priority)
 {
     // --- BEGIN: user implements ---
-    if (NULL == thread) {
+    TaskHandle_t task = NULL;
+
+    if (thread == NULL) {
         return OPRT_INVALID_PARM;
     }
 
-    vTaskPrioritySet((TaskHandle_t)thread, priority);
+    task = __tkl_thread_get_task_handle(thread);
+    if (task == NULL) {
+        return OPRT_INVALID_PARM;
+    }
+
+    vTaskPrioritySet(task, priority);
 
     return OPRT_OK;
     // --- END: user implements ---
@@ -221,8 +373,92 @@ OPERATE_RET tkl_thread_set_priority(TKL_THREAD_HANDLE thread, int priority)
 */
 OPERATE_RET tkl_thread_diagnose(TKL_THREAD_HANDLE thread)
 {
-    // --- BEGIN: user implements ---    
+    // --- BEGIN: user implements ---
     return OPRT_OK;
+    // --- END: user implements ---
+}
+
+OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
+                                       const char* name,
+                                       uint32_t stack_size,
+                                       uint32_t priority,
+                                       const THREAD_FUNC_T func,
+                                       void* const arg)
+{
+    // --- BEGIN: user implements ---
+    if ((thread == NULL) || (func == NULL)) {
+        return OPRT_INVALID_PARM;
+    }
+
+#if !CONFIG_IDF_TARGET_ESP32S3 || !CONFIG_SPIRAM_USE_MALLOC || !CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM || !CONFIG_FREERTOS_SUPPORT_STATIC_ALLOCATION
+    (void)name;
+    (void)stack_size;
+    (void)priority;
+    (void)arg;
+    return OPRT_NOT_SUPPORTED;
+#else
+    uint32_t adjusted_stack_size = __tkl_thread_adjust_stack_size(stack_size);
+    uint32_t stack_depth = adjusted_stack_size / sizeof(StackType_t);
+    PSRAM_THREAD_HANDLE_T *handle = NULL;
+    THREAD_ENTRY_CTX_T *entry_ctx = NULL;
+
+    if (stack_depth == 0) {
+        return OPRT_INVALID_PARM;
+    }
+
+    handle = (PSRAM_THREAD_HANDLE_T *)malloc(sizeof(PSRAM_THREAD_HANDLE_T));
+    if (handle == NULL) {
+        return OPRT_MALLOC_FAILED;
+    }
+
+    entry_ctx = (THREAD_ENTRY_CTX_T *)malloc(sizeof(THREAD_ENTRY_CTX_T));
+    if (entry_ctx == NULL) {
+        free(handle);
+        return OPRT_MALLOC_FAILED;
+    }
+
+    entry_ctx->entry = func;
+    entry_ctx->arg = arg;
+
+    handle->stack_buffer = (StackType_t *)heap_caps_malloc(stack_depth * sizeof(StackType_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (handle->stack_buffer == NULL) {
+        free(entry_ctx);
+        free(handle);
+        return OPRT_MALLOC_FAILED;
+    }
+
+    handle->task_buffer = (StaticTask_t *)malloc(sizeof(StaticTask_t));
+    if (handle->task_buffer == NULL) {
+        free(handle->stack_buffer);
+        free(entry_ctx);
+        free(handle);
+        return OPRT_MALLOC_FAILED;
+    }
+
+    handle->task = xTaskCreateStatic(__tkl_thread_entry, name, stack_depth, (void *const)entry_ctx, priority, handle->stack_buffer,
+                                     handle->task_buffer);
+    if (handle->task == NULL) {
+        free(handle->task_buffer);
+        free(handle->stack_buffer);
+        free(entry_ctx);
+        free(handle);
+        return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
+    }
+    printf("create in psram success\n");
+    printf("handle->task: %p\n", handle->task);
+    printf("handle->stack_buffer: %p\n", handle->stack_buffer);
+    printf("handle->task_buffer: %p\n", handle->task_buffer);
+    printf("entry_ctx: %p\n", entry_ctx);
+    printf("handle: %p\n", handle);
+    printf("name: %s\n", name);
+    printf("stack_size: %lu\n", stack_size);
+    printf("priority: %lu\n", priority);
+
+    handle->magic = PSRAM_THREAD_MAGIC;
+    *thread = (TKL_THREAD_HANDLE)handle;
+
+    return OPRT_OK;
+#endif
     // --- END: user implements ---
 }
 
