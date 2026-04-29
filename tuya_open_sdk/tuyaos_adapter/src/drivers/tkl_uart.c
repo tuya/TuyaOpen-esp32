@@ -233,6 +233,17 @@ int tkl_uart_read(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
     }
     // --- END: user implements --
 }
+
+/* USB-JTAG-only mode has no configurable UART1 pins; stubs satisfy tkl_pinmux references */
+void __tkl_uart1_set_txd_pin(TUYA_PIN_NAME_E pin) 
+{
+    (void)pin;
+}
+void __tkl_uart1_set_rxd_pin(TUYA_PIN_NAME_E pin)
+{
+    (void)pin;
+}
+
 #else
 
 #define MAX_UART_NUM 2

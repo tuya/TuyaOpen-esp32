@@ -134,6 +134,14 @@ OPERATE_RET tkl_i2c_init(TUYA_I2C_NUM_E port, const TUYA_IIC_BASE_CFG_T *cfg)
         return OPRT_NOT_SUPPORTED;
     }
 
+    /* Reuse a bus already created by another driver (e.g. tca9554) on this port */
+    if (i2c_bus[port] == NULL) {
+        i2c_master_get_bus_handle(port, &i2c_bus[port]);
+    }
+    if (i2c_bus[port] != NULL) {
+        return OPRT_OK;
+    }
+
     // initialize i2c bus
     i2c_master_bus_config_t i2c_bus_cfg = {
         .i2c_port = port,
