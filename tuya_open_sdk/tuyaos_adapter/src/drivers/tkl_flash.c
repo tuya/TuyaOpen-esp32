@@ -41,6 +41,82 @@ typedef struct {
     char *uuid;
     char *authkey;
 } tuya_iot_license_t;
+
+#if CONFIG_IDF_TARGET_ESP32S3
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+
+typedef enum {
+    FLASH_OP_READ = 0,
+    FLASH_OP_WRITE,
+    FLASH_OP_ERASE,
+} FLASH_OP_TYPE_E;
+
+typedef struct {
+    FLASH_OP_TYPE_E op;
+    uint32_t addr;
+    union {
+        const uint8_t *src;
+        uint8_t *dst;
+    };
+    uint32_t size;
+    TaskHandle_t caller;
+    OPERATE_RET result;
+} FLASH_REQ_T;
+
+static QueueHandle_t s_flash_queue = NULL;
+
+static OPERATE_RET __flash_dispatch(FLASH_REQ_T *req)
+{
+    req->caller = xTaskGetCurrentTaskHandle();
+    FLASH_REQ_T *preq = req;
+    xQueueSend(s_flash_queue, &preq, portMAX_DELAY);
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    return req->result;
+}
+
+void tkl_flash_agent_init(void)
+{
+    s_flash_queue = xQueueCreate(8, sizeof(FLASH_REQ_T *));
+}
+
+void tkl_flash_agent_process(void)
+{
+    FLASH_REQ_T *req = NULL;
+
+    if (xQueueReceive(s_flash_queue, &req, portMAX_DELAY) != pdTRUE || req == NULL) {
+        return;
+    }
+
+    const esp_partition_t *partition = GET_TUYA_DATA_PARTITION();
+    if (partition == NULL) {
+        req->result = OPRT_COM_ERROR;
+        xTaskNotifyGive(req->caller);
+        return;
+    }
+
+    switch (req->op) {
+        case FLASH_OP_READ:
+            req->result = (esp_partition_read(partition, req->addr, req->dst, req->size) == ESP_OK)
+                          ? OPRT_OK : OPRT_COM_ERROR;
+            break;
+        case FLASH_OP_WRITE:
+            req->result = (esp_partition_write(partition, req->addr, req->src, req->size) == ESP_OK)
+                          ? OPRT_OK : OPRT_COM_ERROR;
+            break;
+        case FLASH_OP_ERASE:
+            req->result = (esp_partition_erase_range(partition, req->addr, req->size) == ESP_OK)
+                          ? OPRT_OK : OPRT_COM_ERROR;
+            break;
+        default:
+            req->result = OPRT_INVALID_PARM;
+            break;
+    }
+
+    xTaskNotifyGive(req->caller);
+}
+#endif
 // --- END: user defines and implements ---
 
 /**
@@ -57,13 +133,18 @@ typedef struct {
 OPERATE_RET tkl_flash_read(uint32_t addr, uint8_t *dst, uint32_t size)
 {
     // --- BEGIN: user implements ---
-    const esp_partition_t *partition;
-
     if (NULL == dst) {
         return OPRT_INVALID_PARM;
     }
 
-    partition = GET_TUYA_DATA_PARTITION();
+#if CONFIG_IDF_TARGET_ESP32S3
+    if (s_flash_queue != NULL) {
+        FLASH_REQ_T req = { .op = FLASH_OP_READ, .addr = addr, .dst = dst, .size = size };
+        return __flash_dispatch(&req);
+    }
+#endif
+
+    const esp_partition_t *partition = GET_TUYA_DATA_PARTITION();
     if (NULL == partition) {
         return OPRT_COM_ERROR;
     }
@@ -90,13 +171,18 @@ OPERATE_RET tkl_flash_read(uint32_t addr, uint8_t *dst, uint32_t size)
 OPERATE_RET tkl_flash_write(uint32_t addr, const uint8_t *src, uint32_t size)
 {
     // --- BEGIN: user implements ---
-    const esp_partition_t *partition;
-
     if (NULL == src) {
         return OPRT_INVALID_PARM;
     }
-    
-    partition = GET_TUYA_DATA_PARTITION();
+
+#if CONFIG_IDF_TARGET_ESP32S3
+    if (s_flash_queue != NULL) {
+        FLASH_REQ_T req = { .op = FLASH_OP_WRITE, .addr = addr, .src = src, .size = size };
+        return __flash_dispatch(&req);
+    }
+#endif
+
+    const esp_partition_t *partition = GET_TUYA_DATA_PARTITION();
     if (NULL == partition) {
         return OPRT_COM_ERROR;
     }
@@ -122,9 +208,14 @@ OPERATE_RET tkl_flash_write(uint32_t addr, const uint8_t *src, uint32_t size)
 OPERATE_RET tkl_flash_erase(uint32_t addr, uint32_t size)
 {
     // --- BEGIN: user implements ---
-    const esp_partition_t *partition;
+#if CONFIG_IDF_TARGET_ESP32S3
+    if (s_flash_queue != NULL) {
+        FLASH_REQ_T req = { .op = FLASH_OP_ERASE, .addr = addr, .size = size };
+        return __flash_dispatch(&req);
+    }
+#endif
 
-    partition = GET_TUYA_DATA_PARTITION();
+    const esp_partition_t *partition = GET_TUYA_DATA_PARTITION();
     if (NULL == partition) {
         return OPRT_COM_ERROR;
     }
@@ -132,7 +223,6 @@ OPERATE_RET tkl_flash_erase(uint32_t addr, uint32_t size)
     if (ESP_OK != esp_partition_erase_range(partition, addr, size)) {
         return OPRT_COM_ERROR;
     }
-
 
     return OPRT_OK;
     // --- END: user implements ---

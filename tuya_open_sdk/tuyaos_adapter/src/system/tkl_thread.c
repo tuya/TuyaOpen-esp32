@@ -29,12 +29,7 @@ typedef struct {
 
 typedef struct {
     TaskHandle_t task;
-} THREAD_HANDLE_T;
-
-typedef struct {
-    THREAD_FUNC_T entry;
-    void *arg;
-} THREAD_ENTRY_CTX_T;
+} RAM_THREAD_HANDLE_T;
 
 #define PSRAM_THREAD_MAGIC 0x5053524DU
 
@@ -71,27 +66,9 @@ static TaskHandle_t __tkl_thread_get_task_handle(const TKL_THREAD_HANDLE thread)
         return psram_handle->task;
     }
 
-    return ((THREAD_HANDLE_T *)thread)->task;
+    return ((RAM_THREAD_HANDLE_T *)thread)->task;
 }
 
-static void __tkl_thread_entry(void *arg)
-{
-    THREAD_ENTRY_CTX_T *ctx = (THREAD_ENTRY_CTX_T *)arg;
-    THREAD_FUNC_T entry = NULL;
-    void *entry_arg = NULL;
-
-    if (ctx != NULL) {
-        entry = ctx->entry;
-        entry_arg = ctx->arg;
-        free(ctx);
-    }
-
-    if (entry != NULL) {
-        entry(entry_arg);
-    }
-
-    vTaskDelete(NULL);
-}
 // --- END: user defines and implements ---
 
 /**
@@ -116,31 +93,20 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
                               void* const arg)
 {
     // --- BEGIN: user implements ---
-    THREAD_HANDLE_T *handle = NULL;
-    THREAD_ENTRY_CTX_T *entry_ctx = NULL;
+    RAM_THREAD_HANDLE_T *handle = NULL;
 
     if ((thread == NULL) || (func == NULL)) {
         return OPRT_INVALID_PARM;
     }
 
-    handle = (THREAD_HANDLE_T *)malloc(sizeof(THREAD_HANDLE_T));
+    handle = (RAM_THREAD_HANDLE_T *)malloc(sizeof(RAM_THREAD_HANDLE_T));
     if (handle == NULL) {
         return OPRT_MALLOC_FAILED;
     }
 
-    entry_ctx = (THREAD_ENTRY_CTX_T *)malloc(sizeof(THREAD_ENTRY_CTX_T));
-    if (entry_ctx == NULL) {
-        free(handle);
-        return OPRT_MALLOC_FAILED;
-    }
-
-    entry_ctx->entry = func;
-    entry_ctx->arg = arg;
-
     stack_size = __tkl_thread_adjust_stack_size(stack_size);
 
-    if (xTaskCreate(__tkl_thread_entry, name, stack_size / sizeof(portSTACK_TYPE), (void *const)entry_ctx, priority, &handle->task) != pdPASS) {
-        free(entry_ctx);
+    if (xTaskCreate(func, name, stack_size / sizeof(portSTACK_TYPE), arg, priority, &handle->task) != pdPASS) {
         free(handle);
         return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
     }
@@ -163,7 +129,7 @@ OPERATE_RET tkl_thread_release(const TKL_THREAD_HANDLE thread)
 {
     // --- BEGIN: user implements ---
     PSRAM_THREAD_HANDLE_T *psram_handle = __tkl_thread_get_psram_handle(thread);
-    THREAD_HANDLE_T *handle = (THREAD_HANDLE_T *)thread;
+    RAM_THREAD_HANDLE_T *handle = (RAM_THREAD_HANDLE_T *)thread;
 
     if (psram_handle != NULL) {
         vTaskDelete(psram_handle->task);
@@ -226,13 +192,13 @@ OPERATE_RET tkl_thread_get_watermark(const TKL_THREAD_HANDLE thread, uint32_t* w
 OPERATE_RET tkl_thread_get_id(TKL_THREAD_HANDLE *thread)
 {
     // --- BEGIN: user implements ---
-    THREAD_HANDLE_T *handle = NULL;
+    RAM_THREAD_HANDLE_T *handle = NULL;
 
     if (thread == NULL) {
         return OPRT_INVALID_PARM;
     }
 
-    handle = (THREAD_HANDLE_T *)malloc(sizeof(THREAD_HANDLE_T));
+    handle = (RAM_THREAD_HANDLE_T *)malloc(sizeof(RAM_THREAD_HANDLE_T));
     if (handle == NULL) {
         return OPRT_MALLOC_FAILED;
     }
@@ -400,7 +366,6 @@ OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
     uint32_t adjusted_stack_size = __tkl_thread_adjust_stack_size(stack_size);
     uint32_t stack_depth = adjusted_stack_size / sizeof(StackType_t);
     PSRAM_THREAD_HANDLE_T *handle = NULL;
-    THREAD_ENTRY_CTX_T *entry_ctx = NULL;
 
     if (stack_depth == 0) {
         return OPRT_INVALID_PARM;
@@ -411,18 +376,8 @@ OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
         return OPRT_MALLOC_FAILED;
     }
 
-    entry_ctx = (THREAD_ENTRY_CTX_T *)malloc(sizeof(THREAD_ENTRY_CTX_T));
-    if (entry_ctx == NULL) {
-        free(handle);
-        return OPRT_MALLOC_FAILED;
-    }
-
-    entry_ctx->entry = func;
-    entry_ctx->arg = arg;
-
     handle->stack_buffer = (StackType_t *)heap_caps_malloc(stack_depth * sizeof(StackType_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (handle->stack_buffer == NULL) {
-        free(entry_ctx);
         free(handle);
         return OPRT_MALLOC_FAILED;
     }
@@ -430,29 +385,18 @@ OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
     handle->task_buffer = (StaticTask_t *)malloc(sizeof(StaticTask_t));
     if (handle->task_buffer == NULL) {
         free(handle->stack_buffer);
-        free(entry_ctx);
         free(handle);
         return OPRT_MALLOC_FAILED;
     }
 
-    handle->task = xTaskCreateStatic(__tkl_thread_entry, name, stack_depth, (void *const)entry_ctx, priority, handle->stack_buffer,
+    handle->task = xTaskCreateStatic(func, name, stack_depth, arg, priority, handle->stack_buffer,
                                      handle->task_buffer);
     if (handle->task == NULL) {
         free(handle->task_buffer);
         free(handle->stack_buffer);
-        free(entry_ctx);
         free(handle);
         return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
     }
-    printf("create in psram success\n");
-    printf("handle->task: %p\n", handle->task);
-    printf("handle->stack_buffer: %p\n", handle->stack_buffer);
-    printf("handle->task_buffer: %p\n", handle->task_buffer);
-    printf("entry_ctx: %p\n", entry_ctx);
-    printf("handle: %p\n", handle);
-    printf("name: %s\n", name);
-    printf("stack_size: %lu\n", stack_size);
-    printf("priority: %lu\n", priority);
 
     handle->magic = PSRAM_THREAD_MAGIC;
     *thread = (TKL_THREAD_HANDLE)handle;
