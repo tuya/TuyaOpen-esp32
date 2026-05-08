@@ -85,10 +85,8 @@ endif()
 # message(STATUS "TUYAOS_ADAPTER_INCLUDE_DIRS: ${include_dirs}")
 
 idf_component_register(SRCS "${SOURCES}"
-                    INCLUDE_DIRS "${include_dirs}" 
-                    REQUIRES 
-                        lvgl
-                        esp_lvgl_port
+                    INCLUDE_DIRS "${include_dirs}"
+                    REQUIRES
                         esp_lcd
                         esp_lcd_sh8601
                         esp_io_expander_tca9554
