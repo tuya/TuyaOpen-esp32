@@ -3,9 +3,9 @@
 
 import os
 import platform
+import shlex
 import shutil
 import requests
-from git import Git
 
 
 COUNTRY_CODE = ""  # "China" or other
@@ -312,37 +312,21 @@ MIRROR_LIST = [
 ]
 
 
-def jihu_mirro(unset=False):
-    if get_country_code() != "China":
-        return
-    if not unset:
-        print("Set jihulab mirror ...")
-    else:
-        print("Unset jihulab mirror ...")
+def build_git_command_with_jihu_mirror(cmds) -> str:
+    quoted_cmds = [shlex.quote(str(cmd)) for cmd in cmds]
+    if not cmds or cmds[0] != "git" or get_country_code() != "China":
+        return " ".join(quoted_cmds)
 
-    g = Git()
-    try:
-        for repo in MIRROR_LIST:
-            jihu = f"https://jihulab.com/esp-mirror/{repo}"
-            if unset:
-                g.config(
-                    "--global",
-                    "--unset",
-                    f"url.{jihu}.insteadOf")
-                g.config(
-                    "--global",
-                    "--unset",
-                    f"url.{jihu}.git.insteadOf")
-            else:
-                github = f"https://github.com/{repo}"
-                g.config(
-                    "--global",
-                    f"url.{jihu}.insteadOf",
-                    f"{github}")
-                g.config(
-                    "--global",
-                    f"url.{jihu}.git.insteadOf",
-                    f"{github}")
-    except Exception as e:
-        print(f"jihu mirror warning: {e}")
-    pass
+    print("Use temporary jihulab mirror for current git command ...")
+
+    mirror_args = []
+    for repo in MIRROR_LIST:
+        github = f"https://github.com/{repo}"
+        jihu = f"https://jihulab.com/esp-mirror/{repo}"
+        mirror_args.extend([
+            "-c", f"url.{jihu}.insteadOf={github}",
+            "-c", f"url.{jihu}.git.insteadOf={github}",
+        ])
+
+    quoted_args = [shlex.quote(arg) for arg in mirror_args]
+    return " ".join(["git", *quoted_args, *quoted_cmds[1:]])
