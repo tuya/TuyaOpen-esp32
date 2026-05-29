@@ -19,8 +19,6 @@ extern "C" {
 typedef void* TKL_THREAD_HANDLE;
 typedef void (*THREAD_FUNC_T)(void*);
 
-#define tkl_thread_create_in_psram tkl_thread_create
-
 /**
 * @brief Create thread
 *
@@ -132,6 +130,27 @@ OPERATE_RET tkl_thread_set_priority(TKL_THREAD_HANDLE thread, int priority);
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET tkl_thread_diagnose(TKL_THREAD_HANDLE thread);
+
+/**
+* @brief Create thread in psram
+*
+* @param[out] thread: thread handle
+* @param[in] name: thread name
+* @param[in] stack_size: stack size of thread
+* @param[in] priority: priority of thread,please ref to tkl thread priority define in tuya_cloud_types.h
+* @param[in] func: the main thread process function
+* @param[in] arg: the args of the func, can be null
+*
+* @note This API is used for creating thread.
+*
+* @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+*/
+OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
+                              const char* name,
+                              uint32_t stack_size,
+                              uint32_t priority,
+                              const THREAD_FUNC_T func,
+                              void* const arg);
 
 #ifdef __cplusplus
 }

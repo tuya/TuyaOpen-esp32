@@ -111,6 +111,7 @@ static void wifi_promiscuous_mgnt_cb(uint8_t *data, uint16_t len, wifi_promiscuo
     }
 }
 #endif
+#ifndef CONFIG_IDF_TARGET_ESP32P4
 static void sniffer_local_cb(const uint8_t *buf, wifi_promiscuous_pkt_type_t type)
 {
     wifi_promiscuous_pkt_t *sniffer_pkt = (wifi_promiscuous_pkt_t *)buf;
@@ -126,6 +127,7 @@ static void sniffer_local_cb(const uint8_t *buf, wifi_promiscuous_pkt_type_t typ
 	//     wifi_promiscuous_mgnt_cb(data, len, type);
     // }
 }
+#endif
 
 static void tkl_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
@@ -372,7 +374,9 @@ OPERATE_RET tkl_wifi_set_sniffer(const BOOL_T en, const SNIFFER_CALLBACK cb)
     //ESP_LOGI(DBG_TAG, "%s: set sniffer en %d cb %p", __func__, en, cb);
     if (en) {
         tuya_sniffer_cb = cb;
+#ifndef CONFIG_IDF_TARGET_ESP32P4
         wifi_sniffer_start((wifi_promiscuous_cb_t)sniffer_local_cb, &filter);
+#endif
     } else {
         //if (NULL != mgnt_recv_cb) {
             wifi_sniffer_stop();
@@ -646,12 +650,14 @@ OPERATE_RET tkl_wifi_register_recv_mgnt_callback(const BOOL_T enable, const WIFI
 {
     if (enable) {
         mgnt_recv_cb = recv_cb;
-		
+
         wifi_promiscuous_filter_t filter;
         memset(&filter, 0, sizeof(filter));
         filter.filter_mask = WIFI_PROMIS_FILTER_MASK_DATA | WIFI_PROMIS_FILTER_MASK_MGMT;
 
+#ifndef CONFIG_IDF_TARGET_ESP32P4
         wifi_sniffer_start((wifi_promiscuous_cb_t)sniffer_local_cb, &filter);
+#endif
     } else {
         if (NULL != tuya_sniffer_cb) {
             wifi_sniffer_stop();
@@ -701,7 +707,9 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb)
     nvs_handle_t nvs_handle = 0;
     unsigned char base_mac[6] = { 0 };
     esp_netif_config_t cfg_sta;
+#ifdef CONFIG_ESP_WIFI_SOFTAP_SUPPORT
     esp_netif_config_t cfg_ap;
+#endif
     esp_netif_inherent_config_t netif_cfg;
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 
@@ -772,6 +780,7 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb)
         return OPRT_COM_ERROR;
     }
 
+#ifdef CONFIG_ESP_WIFI_SOFTAP_SUPPORT
     memset(&cfg_ap, 0, sizeof(cfg_ap));
     memcpy(&netif_cfg, ESP_NETIF_BASE_DEFAULT_WIFI_AP, sizeof(netif_cfg));
     cfg_ap.base = &netif_cfg;
@@ -789,12 +798,13 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb)
         //ESP_LOGE(DBG_TAG, "%s: call esp_netif_attach_wifi_ap failed", __func__);
         return OPRT_COM_ERROR;
     }
+#endif
 
     if (ESP_OK != esp_event_loop_create_default()) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_event_loop_create_default failed", __func__);
         return OPRT_COM_ERROR;
     }
- 
+
     if (ESP_OK != esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_START, &tkl_wifi_event_handler, NULL)) {
         //ESP_LOGE(DBG_TAG, "%s: register WIFI_EVENT_STA_START failed", __func__);
         return OPRT_COM_ERROR;

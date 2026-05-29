@@ -84,25 +84,33 @@ endif()
 
 # message(STATUS "TUYAOS_ADAPTER_INCLUDE_DIRS: ${include_dirs}")
 
+set(adapter_requires
+    esp_lcd
+    esp_lcd_sh8601
+    esp_io_expander_tca9554
+    esp_io_expander
+    esp-sr
+    esp_codec_dev
+    mbedtls
+    nvs_flash
+    bt
+    esp_pm
+    esp_adc
+    efuse
+    soc
+    driver
+    app_update
+    esp_lcd_touch_ft5x06
+)
+
+# espressif__esp_hosted is only available on chips without native Wi-Fi
+# (currently ESP32-P4 paired with a C6 co-processor). On S3/C3/ESP32 this
+# component is not pulled in by idf_component.yml so we must not require it.
+if(CONFIG_IDF_TARGET_ESP32P4)
+    list(APPEND adapter_requires espressif__esp_hosted)
+endif()
+
 idf_component_register(SRCS "${SOURCES}"
-                    INCLUDE_DIRS "${include_dirs}" 
-                    REQUIRES 
-                        lvgl
-                        esp_lvgl_port
-                        esp_lcd
-                        esp_lcd_sh8601
-                        esp_io_expander_tca9554
-                        esp_io_expander
-                        esp-sr
-                        esp_codec_dev
-                        mbedtls
-                        nvs_flash
-                        bt
-                        esp_pm
-                        esp_adc
-                        efuse
-                        soc
-                        driver
-                        app_update
-                        esp_lcd_touch_ft5x06
+                    INCLUDE_DIRS "${include_dirs}"
+                    REQUIRES ${adapter_requires}
                     )

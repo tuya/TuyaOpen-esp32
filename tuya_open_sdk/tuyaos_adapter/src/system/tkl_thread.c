@@ -14,6 +14,8 @@
 #include "tuya_error_code.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/idf_additions.h"
+#include "esp_heap_caps.h"
 // --- END: user defines and implements ---
 
 /**
@@ -41,18 +43,48 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
     if (!thread) {
         return OPRT_INVALID_PARM;
     }
-    
+
     BaseType_t ret = 0;
     #if CONFIG_IDF_TARGET_ESP32
     #elif CONFIG_IDF_TARGET_ESP32S3
         stack_size += 1024;
-    #else
-
     #endif
-    ret = xTaskCreate(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const)thread);
+    ret = xTaskCreateWithCaps(func, name, stack_size / sizeof(portSTACK_TYPE),
+                              (void *const)arg, priority, (TaskHandle_t *)thread,
+                              MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     if (ret != pdPASS) {
         return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
     }
+
+    return OPRT_OK;
+    // --- END: user implements ---
+}
+
+OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
+                                       const char* name,
+                                       uint32_t stack_size,
+                                       uint32_t priority,
+                                       const THREAD_FUNC_T func,
+                                       void* const arg)
+{
+    // --- BEGIN: user implements ---
+    if (!thread) {
+        return OPRT_INVALID_PARM;
+    }
+
+    #if CONFIG_IDF_TARGET_ESP32S3
+        stack_size += 1024;
+    #endif
+
+    BaseType_t ret = xTaskCreateWithCaps(func, name, stack_size / sizeof(portSTACK_TYPE),
+                                         (void *const)arg, priority,
+                                         (TaskHandle_t *)thread,
+                                         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (ret != pdPASS) {
+        printf("[tkl_thread] xTaskCreateWithCaps FAILED for %s, ret=%d\n", name, (int)ret);
+        return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
+    }
+    printf("[tkl_thread] xTaskCreateWithCaps OK for %s, handle=%p\n", name, *thread);
 
     return OPRT_OK;
     // --- END: user implements ---
@@ -73,9 +105,9 @@ OPERATE_RET tkl_thread_release(const TKL_THREAD_HANDLE thread)
     if (!thread) {
         return OPRT_INVALID_PARM;
     }
-    
-    vTaskDelete((TaskHandle_t)thread);
-    
+
+    vTaskDeleteWithCaps((TaskHandle_t)thread);
+
     return OPRT_OK;
     // --- END: user implements ---
 }
