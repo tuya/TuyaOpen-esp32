@@ -114,3 +114,7 @@ idf_component_register(SRCS "${SOURCES}"
                     INCLUDE_DIRS "${include_dirs}"
                     REQUIRES ${adapter_requires}
                     )
+
+if(CONFIG_IDF_TARGET_ESP32P4)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=hci_rx_handler")
+endif()
