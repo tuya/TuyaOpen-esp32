@@ -11,7 +11,9 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#ifndef CONFIG_IDF_TARGET_ESP32P4
 #include "esp_bt.h"
+#endif
 
 #include "tuya_error_code.h"
 #include "tuya_cloud_types.h"
@@ -29,6 +31,8 @@
 
 #define BLE_HCI_CMD_MSG_TYPE_LEN 1
 #define BLE_HCI_ACL_MSG_TYPE_LEN 1
+
+#ifndef CONFIG_IDF_TARGET_ESP32P4
 
 static TKL_HCI_FUNC_CB tuya_ble_hci_rx_cmd_hs_cb;
 static TKL_HCI_FUNC_CB tuya_ble_hci_rx_acl_hs_cb;
@@ -240,3 +244,178 @@ OPERATE_RET tkl_hci_deinit(void)
 
     return OPRT_OK;
 }
+
+#else /* CONFIG_IDF_TARGET_ESP32P4 */
+
+/* ---------------------------------------------------------------------------
+ * ESP32-P4 + C6 (via ESP-Hosted) BT/BLE HCI bridge
+ *
+ * P4 has no local BT controller. The BT controller lives on the C6
+ * coprocessor and is reached through ESP-Hosted's SDIO transport using
+ * the HCI-over-Hosted (ESP_HCI_IF) channel.
+ *
+ * Tuya's NimBLE host (in src/tal_bluetooth/nimble) talks HCI through the
+ * tkl_hci_* API:
+ *   tkl_hci_cmd_packet_send / tkl_hci_acl_packet_send  -> host to controller
+ *   callbacks registered by tkl_hci_callback_register  <- controller to host
+ *
+ * Payloads on the wire include an H4 type byte (CMD/ACL/EVT) as the first
+ * byte; tkl_hci_* APIs use raw HCI without the type byte, so we add/strip
+ * it here.
+ *
+ * The ESP-Hosted SDIO Rx path calls a global hci_rx_handler() when a packet
+ * of if_type ESP_HCI_IF arrives. We provide a strong override of that
+ * symbol (the upstream stub is marked WEAK).
+ * --------------------------------------------------------------------------- */
+
+#include <stdlib.h>
+#include <string.h>
+
+/* Forward declarations of ESP-Hosted internals (kept in sync with
+ * managed_components/espressif__esp_hosted/host/utils/common.h and
+ * host/drivers/transport/transport_drv.h). Using forward declarations
+ * avoids polluting tkl_bt.c with the entire ESP-Hosted private include
+ * tree. */
+typedef struct {
+    union {
+        void *priv_buffer_handle;
+    };
+    uint8_t  if_type;
+    uint8_t  if_num;
+    uint8_t *payload;
+    uint8_t  flag;
+    uint16_t payload_len;
+    uint16_t seq_num;
+    uint8_t  payload_zcopy;
+    void (*free_buf_handle)(void *buf_handle);
+} interface_buffer_handle_t;
+
+/* From esp_hosted_interface.h:
+ *   ESP_INVALID_IF=0, ESP_STA_IF=1, ESP_AP_IF=2, ESP_SERIAL_IF=3,
+ *   ESP_HCI_IF=4,     ESP_PRIV_IF=5, ESP_TEST_IF=6, ESP_ETH_IF=7.
+ * (We intentionally avoid pulling esp_hosted_interface.h into the adapter,
+ * but the value must match exactly or the SDIO Tx path won't treat the
+ * frame as HCI and won't move the H4 type byte into hci_pkt_type.) */
+#define TKL_ESP_HCI_IF              4
+#define TKL_H_BUFF_NO_ZEROCOPY      0
+
+extern int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
+                         uint8_t *buffer, uint16_t len, uint8_t buff_zerocopy,
+                         void (*free_buf_fun)(void *ptr));
+
+/* H4 packet types */
+#define TKL_HCI_H4_CMD              0x01
+#define TKL_HCI_H4_ACL              0x02
+#define TKL_HCI_H4_EVT              0x04
+
+/* Tuya HCI Rx callbacks registered by tkl_hci_callback_register(). */
+static TKL_HCI_FUNC_CB s_tuya_evt_cb;
+static TKL_HCI_FUNC_CB s_tuya_acl_cb;
+
+/* Tx helpers ----------------------------------------------------------- */
+
+static void tkl_hci_free_tx_buf(void *ptr)
+{
+    if (ptr) {
+        free(ptr);
+    }
+}
+
+static OPERATE_RET tkl_hci_tx_with_h4(uint8_t h4_type, const uint8_t *p_buf, uint16_t buf_len)
+{
+    if (NULL == p_buf || 0 == buf_len) {
+        ESP_LOGE(DBG_TAG, "%s: invalid input", __func__);
+        return OPRT_INVALID_PARM;
+    }
+
+    uint16_t total_len = (uint16_t)(buf_len + 1);
+    uint8_t *data = malloc(total_len);
+    if (NULL == data) {
+        ESP_LOGE(DBG_TAG, "%s: alloc %u failed", __func__, (unsigned)total_len);
+        return OPRT_MALLOC_FAILED;
+    }
+    data[0] = h4_type;
+    memcpy(&data[1], p_buf, buf_len);
+
+    int ret = esp_hosted_tx(TKL_ESP_HCI_IF, 0, data, total_len,
+                            TKL_H_BUFF_NO_ZEROCOPY, tkl_hci_free_tx_buf);
+    if (ret != 0) {
+        ESP_LOGW(DBG_TAG, "%s: esp_hosted_tx failed (%d)", __func__, ret);
+        /* esp_hosted_tx is responsible for invoking free_buf_fun on success;
+         * on failure (queue full etc.) free here to avoid leaks. */
+        free(data);
+        return OPRT_COM_ERROR;
+    }
+    return OPRT_OK;
+}
+
+OPERATE_RET tkl_hci_cmd_packet_send(const uint8_t *p_buf, uint16_t buf_len)
+{
+    return tkl_hci_tx_with_h4(TKL_HCI_H4_CMD, p_buf, buf_len);
+}
+
+OPERATE_RET tkl_hci_acl_packet_send(const uint8_t *p_buf, uint16_t buf_len)
+{
+    return tkl_hci_tx_with_h4(TKL_HCI_H4_ACL, p_buf, buf_len);
+}
+
+OPERATE_RET tkl_hci_callback_register(const TKL_HCI_FUNC_CB hci_evt_cb, const TKL_HCI_FUNC_CB acl_pkt_cb)
+{
+    s_tuya_evt_cb = hci_evt_cb;
+    s_tuya_acl_cb = acl_pkt_cb;
+    return OPRT_OK;
+}
+
+OPERATE_RET tkl_hci_reset(void)
+{
+    /* The C6 controller is reset by ESP-Hosted during its bring-up. Nothing
+     * to do here from the host adapter; NimBLE will issue HCI_Reset later. */
+    return OPRT_OK;
+}
+
+OPERATE_RET tkl_hci_init(void)
+{
+    /* ESP-Hosted brings up the SDIO link and the C6 controller before this
+     * point. NimBLE drives the HCI exchange through tkl_hci_cmd_packet_send;
+     * no extra controller init is needed here. */
+    return OPRT_OK;
+}
+
+OPERATE_RET tkl_hci_deinit(void)
+{
+    s_tuya_evt_cb = NULL;
+    s_tuya_acl_cb = NULL;
+    return OPRT_OK;
+}
+
+/* Rx path: strong override of the upstream WEAK stub. Called by ESP-Hosted
+ * transport when an ESP_HCI_IF packet arrives from the C6. */
+int hci_rx_handler(interface_buffer_handle_t *buf_handle)
+{
+    if (NULL == buf_handle || NULL == buf_handle->payload || buf_handle->payload_len < 1) {
+        return 0;
+    }
+
+    uint8_t  h4_type = buf_handle->payload[0];
+    uint8_t *data    = buf_handle->payload + 1;
+    uint16_t len     = (uint16_t)(buf_handle->payload_len - 1);
+
+    switch (h4_type) {
+    case TKL_HCI_H4_EVT:
+        if (s_tuya_evt_cb) {
+            s_tuya_evt_cb(data, len);
+        }
+        break;
+    case TKL_HCI_H4_ACL:
+        if (s_tuya_acl_cb) {
+            s_tuya_acl_cb(data, len);
+        }
+        break;
+    default:
+        ESP_LOGW(DBG_TAG, "hci_rx_handler: unsupported H4 type 0x%02x", h4_type);
+        break;
+    }
+    return 0;
+}
+
+#endif /* CONFIG_IDF_TARGET_ESP32P4 */

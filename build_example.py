@@ -125,6 +125,9 @@ def _suffix(param_data):
             suffix = "_usb_jtag"
         else:
             suffix = "_uart"
+    elif "esp32p4" == chip:
+        # ESP32-P4 always pairs with C6 coprocessor for WiFi/BLE in this SDK.
+        suffix = "_c6"
 
     return suffix
 
