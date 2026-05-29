@@ -12,7 +12,8 @@ SUPPORT_CHIPS = [
     "esp32",
     "esp32c3",
     "esp32s3",
-    "esp32c6"
+    "esp32c6",
+    "esp32p4"
 ]
 
 
@@ -69,7 +70,11 @@ chip: {chip}''')
 
     delete_temp_files(root)
 
-    if not set_target(root, chip):
+    # ESP32-P4 in this SDK always pairs with the C6 coprocessor, so it must
+    # use the "_c6" sdkconfig variant. Keep this in sync with build_example.py.
+    suffix = "_c6" if chip == "esp32p4" else ""
+
+    if not set_target(root, chip, suffix):
         print("Error: set-target failed.")
         sys.exit(1)
 

@@ -126,8 +126,13 @@ static bool __stack_in_psram(void)
 {
 #if defined(CONFIG_SPIRAM)
     void *sp;
+#ifdef CONFIG_IDF_TARGET_ESP32P4
+    __asm__ volatile("mv %0, sp" : "=r"(sp));
+    return ((uintptr_t)sp >= SOC_EXTRAM_LOW && (uintptr_t)sp < SOC_EXTRAM_HIGH);
+#else
     __asm__ volatile("mov %0, a1" : "=r"(sp));
     return ((uintptr_t)sp >= SOC_EXTRAM_DATA_LOW && (uintptr_t)sp < SOC_EXTRAM_DATA_HIGH);
+#endif
 #else
     return false;
 #endif

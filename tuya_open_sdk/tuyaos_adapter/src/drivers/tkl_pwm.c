@@ -57,6 +57,14 @@ static SR_PWM_GPIO_T sg_pwm_gpio_map[] = {
     {TUYA_IO_PIN_39, LEDC_CHANNEL_3},
     {TUYA_IO_PIN_40, LEDC_CHANNEL_4},
     {TUYA_IO_PIN_41, LEDC_CHANNEL_5},
+#elif defined(CONFIG_IDF_TARGET_ESP32P4)
+    /* P4: GPIO range 0-54; GPIO26-28 are strapping pins, GPIO35-36 are USB, GPIO38-39 are UART0 */
+    {TUYA_IO_PIN_18, LEDC_CHANNEL_0},
+    {TUYA_IO_PIN_19, LEDC_CHANNEL_1},
+    {TUYA_IO_PIN_20, LEDC_CHANNEL_2},
+    {TUYA_IO_PIN_21, LEDC_CHANNEL_3},
+    {TUYA_IO_PIN_22, LEDC_CHANNEL_4},
+    {TUYA_IO_PIN_23, LEDC_CHANNEL_5},
 #else
     /* ESP32 classic: GPIO34-39 are input-only; GPIO18/19/22/23/25/26 are all output-capable */
     /* ESP32-C6: GPIO range 0-30; GPIO18/19/22/23/25/26 are all valid */

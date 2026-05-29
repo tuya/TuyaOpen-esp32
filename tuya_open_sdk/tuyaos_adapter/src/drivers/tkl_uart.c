@@ -266,6 +266,9 @@ static int sg_uart1_rxd = GPIO_NUM_9;
 #elif defined(CONFIG_IDF_TARGET_ESP32C6)
 static int sg_uart1_txd = GPIO_NUM_6;   /* avoids conflict with UART0 default RX GPIO17 */
 static int sg_uart1_rxd = GPIO_NUM_7;
+#elif defined(CONFIG_IDF_TARGET_ESP32P4)
+static int sg_uart1_txd = GPIO_NUM_10;
+static int sg_uart1_rxd = GPIO_NUM_11;
 #else
 static int sg_uart1_txd = GPIO_NUM_17;
 static int sg_uart1_rxd = GPIO_NUM_18;
