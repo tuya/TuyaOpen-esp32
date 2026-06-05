@@ -52,6 +52,10 @@ static TKL_I2S_GPIO_CFG_T sg_i2s_gpio_cfg[TUYA_I2S_NUM_MAX] = {
     {GPIO_NUM_5, GPIO_NUM_4, GPIO_NUM_6},   // I2S0
     {GPIO_NUM_15, GPIO_NUM_16, GPIO_NUM_7}, // I2S1
 };
+#elif defined(CONFIG_IDF_TARGET_ESP32P4)
+static TKL_I2S_GPIO_CFG_T sg_i2s_gpio_cfg[TUYA_I2S_NUM_MAX] = {
+    {GPIO_NUM_12, GPIO_NUM_10, GPIO_NUM_11}, // I2S0 — ESP32-P4-C6 dev board (bclk/ws/data)
+};
 #endif
 
 static TKL_I2S_HANDLE_T sg_i2s_hdl[TUYA_I2S_NUM_MAX] = {0};
