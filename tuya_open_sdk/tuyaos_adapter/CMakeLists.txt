@@ -108,8 +108,15 @@ set(adapter_requires
 # espressif__esp_hosted is only available on chips without native Wi-Fi
 # (currently ESP32-P4 paired with a C6 co-processor). On S3/C3/ESP32 this
 # component is not pulled in by idf_component.yml so we must not require it.
-if(CONFIG_IDF_TARGET_ESP32P4)
+# Use IDF_TARGET (always defined during component processing) rather than
+# CONFIG_IDF_TARGET_ESP32P4, which is not reliably set as a CMake variable at
+# this point — the old guard never fired, so these REQUIRES were silently
+# dropped (WiFi still worked because esp_wifi_remote pulls esp_hosted in
+# transitively, but the esp_video include path was missing).
+if(IDF_TARGET STREQUAL "esp32p4")
     list(APPEND adapter_requires espressif__esp_hosted)
+    # esp_video provides the V4L2 MIPI-CSI camera interface (P4 only).
+    list(APPEND adapter_requires espressif__esp_video espressif__esp_cam_sensor)
 endif()
 
 idf_component_register(SRCS "${SOURCES}"

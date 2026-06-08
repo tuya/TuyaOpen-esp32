@@ -19,3 +19,9 @@ dependencies:
   espressif/esp_lcd_touch_ft5x06: ~1.0.7
   espressif/esp_lcd_touch_gt911: ">=1.0.0"
   espressif/esp_lcd_st7701: "*"
+  # MIPI-CSI camera (ESP32-P4 only). esp_video pulls in esp_cam_sensor with
+  # OV5647 etc. Only needed on P4; native-WiFi chips don't have MIPI-CSI.
+  espressif/esp_video:
+    version: "0.8.*"
+    rules:
+      - if: "target == esp32p4"
