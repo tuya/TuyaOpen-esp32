@@ -564,6 +564,11 @@ CONFIG_ESP_NETIF_REPORT_DATA_TRAFFIC=y
 #
 # ESP PSRAM
 #
+# Bump PSRAM to 200MHz so the MIPI-DSI DPI controller has enough bandwidth to
+# fetch the framebuffer without underrun (bottom-of-screen blue + dpi underrun
+# spam). 200M requires experimental features to be enabled.
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_SPIRAM_SPEED_200M=y
 # end of ESP PSRAM
 
 #
@@ -1107,7 +1112,13 @@ CONFIG_USB_OTG_SUPPORTED=y
 #
 # Virtual file system
 #
-# CONFIG_VFS_SUPPORT_IO is not set
+# VFS POSIX IO is required by esp_video: it registers the MIPI-CSI camera as
+# /dev/video0 and the V4L2 interface uses open()/ioctl()/close() through the VFS
+# layer. TuyaOpen disables it by default (it uses its own TKL file APIs), which
+# made esp_video_init fail with "Failed to register video VFS dev name=video0".
+CONFIG_VFS_SUPPORT_IO=y
+CONFIG_VFS_SUPPORT_DIR=y
+CONFIG_VFS_SUPPORT_SELECT=y
 # end of Virtual file system
 
 #
@@ -1320,3 +1331,13 @@ CONFIG_ESP32_PTHREAD_TASK_CORE_DEFAULT=-1
 CONFIG_ESP32_PTHREAD_TASK_NAME_DEFAULT="pthread"
 CONFIG_SPI_FLASH_WRITING_DANGEROUS_REGIONS_ABORTS=y
 # End of deprecated options
+
+#
+# MIPI-CSI Camera (ESP32-P4 + OV5647)
+# Provided by the esp_video / esp_cam_sensor components (P4 only).
+# OV5647 outputs RAW8 800x1280@50fps; the P4 ISP pipeline converts RAW -> RGB565/YUV422.
+#
+CONFIG_CAMERA_OV5647=y
+CONFIG_CAMERA_OV5647_MIPI_RAW8_800x1280_50FPS=y
+CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER=y
+# end of MIPI-CSI Camera

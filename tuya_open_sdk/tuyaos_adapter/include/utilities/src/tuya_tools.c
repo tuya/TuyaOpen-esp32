@@ -10,14 +10,17 @@ size_t tuya_strlen(const char *str)
     return strlen(str);
 }
 
-char *tuya_strcpy(char *dst, const char *src)
+char *tuya_strcpy(char *dst, const char *src, size_t size)
 {
-    return strcpy(dst, src);
+    strncpy(dst, src, size - 1);
+    dst[size - 1] = '\0';
+    return dst;
 }
 
-char *tuya_strcat(char* dst, const char* src)
+char *tuya_strcat(char *dst, const char *src, size_t size)
 {
-    return strcat(dst, src);
+    strncat(dst, src, size - strlen(dst) - 1);
+    return dst;
 }
 
 

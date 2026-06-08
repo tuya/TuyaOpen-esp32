@@ -17,7 +17,32 @@
 
 #include "esp_random.h"
 #include "esp_system.h"
+
+/* Critical-section spinlock. tal_system_enter/exit_critical() map to these and
+ * are pulled in by components that protect shared lists/queues (e.g. the camera
+ * TDL layer). The ESP32 adapter previously declared but never implemented them. */
+static portMUX_TYPE s_tkl_critical_mux = portMUX_INITIALIZER_UNLOCKED;
 // --- END: user defines and implements ---
+
+uint32_t tkl_system_enter_critical(void)
+{
+    if (xPortInIsrContext()) {
+        taskENTER_CRITICAL_ISR(&s_tkl_critical_mux);
+    } else {
+        taskENTER_CRITICAL(&s_tkl_critical_mux);
+    }
+    return 0;
+}
+
+void tkl_system_exit_critical(uint32_t irq_mask)
+{
+    (void)irq_mask;
+    if (xPortInIsrContext()) {
+        taskEXIT_CRITICAL_ISR(&s_tkl_critical_mux);
+    } else {
+        taskEXIT_CRITICAL(&s_tkl_critical_mux);
+    }
+}
 
 /**
 * @brief system reset

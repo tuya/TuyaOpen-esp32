@@ -6,8 +6,11 @@ import subprocess
 
 from tools.util import (
     rm_rf, get_country_code, copy_file,
-    do_subprocess, get_system_name, jihu_mirro
+    do_subprocess, get_system_name, build_git_command_with_jihu_mirror
 )
+
+
+MAX_INSTALL_ATTEMPTS = 2
 
 
 def need_prepare(root, prepare_file, target):
@@ -79,8 +82,6 @@ def export_idf_path(root):
 def download_esp_idf():
     print("Downloading ESP_IDF ...")
 
-    jihu_mirro(unset=False)
-
     idf_path = os.environ["IDF_PATH"]
     if not os.path.exists(idf_path):
         print("Initialing esp-idf ...")
@@ -95,9 +96,8 @@ def download_esp_idf():
             "--depth=1",
             idf_path,
         ]
-        cmd = " ".join(cmds)
+        cmd = build_git_command_with_jihu_mirror(cmds)
         if do_subprocess(cmd) != 0:
-            jihu_mirro(unset=True)
             return False
 
     cmds = [
@@ -107,13 +107,11 @@ def download_esp_idf():
         "--init",
         "--recursive",
     ]
-    cmd = " ".join(cmds)
+    cmd = build_git_command_with_jihu_mirror(cmds)
     git_cmd = f"cd {idf_path} && {cmd}"
     if do_subprocess(git_cmd) != 0:
-        jihu_mirro(unset=True)
         return False
 
-    jihu_mirro(unset=True)
     print("Download ESP_IDF success.")
     return True
 
@@ -156,6 +154,28 @@ def install_target(target):
     return True
 
 
+def cleanup_failed_downloads(root):
+    idf_tools_path = os.environ["IDF_TOOLS_PATH"]
+    cleanup_list = [
+        os.path.join(idf_tools_path, "dist"),
+        os.path.join(idf_tools_path, "tools"),
+    ]
+    for path in cleanup_list:
+        if os.path.exists(path):
+            print(f"Remove failed download cache: {path}")
+            rm_rf(path)
+
+
+def install_target_with_retry(root, target):
+    for idx in range(MAX_INSTALL_ATTEMPTS):
+        if install_target(target):
+            return True
+        cleanup_failed_downloads(root)
+        if idx + 1 < MAX_INSTALL_ATTEMPTS:
+            print(f"Retry install target [{target}]: {idx + 2}/{MAX_INSTALL_ATTEMPTS}")
+    return False
+
+
 def platform_prepare(root, target):
     prepare_file = os.path.join(root, ".prepare")
     if not need_prepare(root, prepare_file, target):
@@ -171,7 +191,7 @@ def platform_prepare(root, target):
         return False
 
     copy_idf_tools_py(root)
-    if not install_target(target):
+    if not install_target_with_retry(root, target):
         print(f"Install target [{target}] failed.")
         return False
 

@@ -388,9 +388,9 @@ OPERATE_RET tkl_hci_deinit(void)
     return OPRT_OK;
 }
 
-/* Rx path: strong override of the upstream WEAK stub. Called by ESP-Hosted
- * transport when an ESP_HCI_IF packet arrives from the C6. */
-int hci_rx_handler(interface_buffer_handle_t *buf_handle)
+/* Rx path: wraps the esp_hosted stub via --wrap linker flag. Called by
+ * ESP-Hosted transport when an ESP_HCI_IF packet arrives from the C6. */
+int __wrap_hci_rx_handler(interface_buffer_handle_t *buf_handle)
 {
     if (NULL == buf_handle || NULL == buf_handle->payload || buf_handle->payload_len < 1) {
         return 0;
