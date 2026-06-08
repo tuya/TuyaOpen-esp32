@@ -101,6 +101,8 @@ set(adapter_requires
     driver
     app_update
     esp_lcd_touch_ft5x06
+    esp_lcd_touch_gt911
+    esp_lcd_st7701
 )
 
 # espressif__esp_hosted is only available on chips without native Wi-Fi
