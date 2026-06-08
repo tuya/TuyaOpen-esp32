@@ -48,24 +48,26 @@
 size_t tuya_strlen(const char *str);
 
 /**
- * @brief string copy
+ * @brief bounded string copy
  * 
- * @param[in] dst: target array used to store the copied content
- * @param[in] src: string to copy
+ * @param[in] dst:  target array used to store the copied content
+ * @param[in] src:  string to copy
+ * @param[in] size: size of destination buffer (including null terminator)
  * 
  * @return pointer to the final destination string dest
  */
-char *tuya_strcpy(char *dst, const char *src);
+char *tuya_strcpy(char *dst, const char *src, size_t size);
 
 /**
- * @brief string cat
+ * @brief bounded string cat
  * 
- * @param[in] dst: point to target string array
- * @param[in] src: point to the string to append
+ * @param[in] dst:  point to target string array
+ * @param[in] src:  point to the string to append
+ * @param[in] size: size of destination buffer (including null terminator)
  * 
  * @return pointer to the final destination string dest
  */
-char *tuya_strcat(char* dst, const char* src);
+char *tuya_strcat(char *dst, const char *src, size_t size);
 
 /**
  * @brief compare the first n characters of two string
