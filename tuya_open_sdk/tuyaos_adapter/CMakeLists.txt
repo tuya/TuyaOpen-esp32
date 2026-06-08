@@ -101,6 +101,8 @@ set(adapter_requires
     driver
     app_update
     esp_lcd_touch_ft5x06
+    esp_lcd_touch_gt911
+    esp_lcd_st7701
 )
 
 # espressif__esp_hosted is only available on chips without native Wi-Fi
@@ -114,3 +116,7 @@ idf_component_register(SRCS "${SOURCES}"
                     INCLUDE_DIRS "${include_dirs}"
                     REQUIRES ${adapter_requires}
                     )
+
+if(CONFIG_IDF_TARGET_ESP32P4)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=hci_rx_handler")
+endif()
