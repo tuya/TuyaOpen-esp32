@@ -18,7 +18,12 @@ dependencies:
   espressif/esp_lcd_panel_io_additions: "^1.0.1"
   espressif/esp_lcd_touch_ft5x06: ~1.0.7
   espressif/esp_lcd_touch_gt911: ">=1.0.0"
-  espressif/esp_lcd_st7701: "*"
+  # ST7701 MIPI-DSI panel driver — ESP32-P4 only (MIPI-DSI is P4-exclusive).
+  # Other targets (esp32, esp32s3, ...) have no matching version, so gate it.
+  espressif/esp_lcd_st7701:
+    version: ">2.0.0"
+    rules:
+      - if: "target == esp32p4"
   # MIPI-CSI camera (ESP32-P4 only). esp_video pulls in esp_cam_sensor with
   # OV5647 etc. Only needed on P4; native-WiFi chips don't have MIPI-CSI.
   espressif/esp_video:
