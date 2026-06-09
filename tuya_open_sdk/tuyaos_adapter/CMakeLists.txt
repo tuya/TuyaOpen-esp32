@@ -19,6 +19,7 @@ endif()
 
 list(APPEND SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_adc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_dma2d.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_flash.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2c.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_network.c"
@@ -41,6 +42,7 @@ endif()
 
 set(include_dirs
     "include/adc"
+    "include/dma2d"
     "include/bluetooth"
     "include/flash"
     "include/i2c"
@@ -110,6 +112,13 @@ set(adapter_requires
 # component is not pulled in by idf_component.yml so we must not require it.
 if(CONFIG_IDF_TARGET_ESP32P4)
     list(APPEND adapter_requires espressif__esp_hosted)
+endif()
+
+# PPA (Pixel-Processing Accelerator) backs tkl_dma2d on the ESP32-P4. Use
+# IDF_TARGET (not CONFIG_IDF_TARGET_ESP32P4) so the requirement is visible during
+# the early component-requirement expansion, when CONFIG_ vars are not yet set.
+if("${IDF_TARGET}" STREQUAL "esp32p4")
+    list(APPEND adapter_requires esp_driver_ppa)
 endif()
 
 idf_component_register(SRCS "${SOURCES}"
