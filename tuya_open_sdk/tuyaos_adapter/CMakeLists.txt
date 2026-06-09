@@ -104,7 +104,6 @@ set(adapter_requires
     app_update
     esp_lcd_touch_ft5x06
     esp_lcd_touch_gt911
-    esp_lcd_st7701
 )
 
 # espressif__esp_hosted is only available on chips without native Wi-Fi
@@ -119,6 +118,10 @@ if(IDF_TARGET STREQUAL "esp32p4")
     list(APPEND adapter_requires espressif__esp_hosted)
     # esp_video provides the V4L2 MIPI-CSI camera interface (P4 only).
     list(APPEND adapter_requires espressif__esp_video espressif__esp_cam_sensor)
+    # esp_lcd_st7701 is a MIPI-DSI panel driver (P4 only). Matches the
+    # target == esp32p4 gate in main/idf_component.yml — on other targets the
+    # component has no matching version and must not be required.
+    list(APPEND adapter_requires esp_lcd_st7701)
 endif()
 
 # PPA (Pixel-Processing Accelerator) backs tkl_dma2d on the ESP32-P4. Use
