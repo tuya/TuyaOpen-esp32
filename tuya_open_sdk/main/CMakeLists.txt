@@ -33,6 +33,8 @@ if(NOT "$ENV{TUYAOS_LIBS}" STREQUAL "")
                             "-u lv_mem_test_core"
                             "-u lv_port_log_print"
                             "-u tdl_audio_driver_register"
+                            "-u tdl_tp_device_register"
+                            "-u tdl_disp_device_register"
                         )
 endif()
 
