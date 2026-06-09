@@ -116,7 +116,8 @@ set(adapter_requires
 if(IDF_TARGET STREQUAL "esp32p4")
     list(APPEND adapter_requires espressif__esp_hosted)
     # esp_video provides the V4L2 MIPI-CSI camera interface (P4 only).
-    list(APPEND adapter_requires espressif__esp_video espressif__esp_cam_sensor)
+    list(APPEND adapter_requires espressif__esp_video espressif__esp_cam_sensor espressif__esp_h264)
+    list(APPEND adapter_requires fatfs esp_driver_sdmmc)
 endif()
 
 idf_component_register(SRCS "${SOURCES}"
