@@ -118,8 +118,12 @@ if(IDF_TARGET STREQUAL "esp32p4")
     # esp_video provides the V4L2 MIPI-CSI camera interface (P4 only).
     list(APPEND adapter_requires espressif__esp_video espressif__esp_cam_sensor espressif__esp_h264)
     list(APPEND adapter_requires fatfs esp_driver_sdmmc)
-    # 视频测试：esp_extractor 做 MP4(MJPEG) 解封装；音频走旁挂 PCM，不再需要 esp_audio_codec。
+    # 视频测试：esp_extractor(vendored 预编译组件，见 components/) 做 MP4(MJPEG) 解封装；
+    # 音频走旁挂 PCM，不需要 esp_audio_codec。
     list(APPEND adapter_requires esp_extractor)
+    # 视频测试(云端播放)：esp-tls 直建 TLS 连接 + mbedtls 证书 bundle(已在 requires)验证公网 CA，
+    # 从 HTTPS URL 整文件下载到 PSRAM 再播。不用 esp_http_client(其 HTTPS 编译开关在本工程未启用)。
+    list(APPEND adapter_requires esp-tls)
 endif()
 
 idf_component_register(SRCS "${SOURCES}"
