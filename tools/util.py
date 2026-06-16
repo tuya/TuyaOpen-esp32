@@ -322,16 +322,25 @@ _JIHU_MIRROR_READY = False
 def _git_version_tuple():
     try:
         out = subprocess.check_output(["git", "--version"], text=True).strip()
-    except Exception:
+    except Exception as e:
+        print(f"[WARN] failed to detect git version ({e}); "
+              f"assuming pre-2.32 fallback path.")
         return (0, 0, 0)
     # Output like: "git version 2.34.1" / "git version 2.39.2.windows.1"
     parts = out.split()
     if len(parts) < 3:
+        print(f"[WARN] unrecognized git version output: {out!r}; "
+              f"assuming pre-2.32 fallback path.")
         return (0, 0, 0)
     nums = parts[2].split(".")
     try:
-        return tuple(int(x) for x in nums[:3] if x.isdigit())
-    except Exception:
+        ver = tuple(int(x) for x in nums[:3] if x.isdigit())
+        if not ver:
+            raise ValueError("no numeric components")
+        return ver
+    except Exception as e:
+        print(f"[WARN] failed to parse git version {parts[2]!r} ({e}); "
+              f"assuming pre-2.32 fallback path.")
         return (0, 0, 0)
 
 
@@ -339,8 +348,23 @@ def _install_jihu_via_config_global():
     # Path A (git >= 2.32): isolated temp gitconfig via GIT_CONFIG_GLOBAL.
     # No race with other git processes; a leaked temp file (on hard kill)
     # is harmless.
+    prev_env = os.environ.get("GIT_CONFIG_GLOBAL")
     fd, path = tempfile.mkstemp(suffix=".gitconfig", prefix="esp_jihu_")
     os.close(fd)
+
+    # Register cleanup BEFORE writing rules, so a mid-way failure still
+    # removes the temp file and restores the user's prior env var.
+    def _cleanup():
+        if prev_env is None:
+            os.environ.pop("GIT_CONFIG_GLOBAL", None)
+        else:
+            os.environ["GIT_CONFIG_GLOBAL"] = prev_env
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    atexit.register(_cleanup)
+
     for repo in MIRROR_LIST:
         github = f"https://github.com/{repo}"
         jihu = f"https://jihulab.com/esp-mirror/{repo}"
@@ -348,13 +372,6 @@ def _install_jihu_via_config_global():
             subprocess.run(["git", "config", "--file", path, key, github],
                            check=True)
     os.environ["GIT_CONFIG_GLOBAL"] = path
-
-    def _cleanup():
-        try:
-            os.unlink(path)
-        except OSError:
-            pass
-    atexit.register(_cleanup)
 
 
 def _install_jihu_via_global_fallback():
