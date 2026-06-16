@@ -7,6 +7,7 @@ import platform
 import shlex
 import shutil
 import subprocess
+import tempfile
 
 import requests
 
@@ -315,14 +316,80 @@ MIRROR_LIST = [
 ]
 
 
-_JIHU_MIRROR_INSTALLED = False
+_JIHU_MIRROR_READY = False
 
 
-def _unset_jihu_mirror():
+def _git_version_tuple():
+    try:
+        out = subprocess.check_output(["git", "--version"], text=True).strip()
+    except Exception:
+        return (0, 0, 0)
+    # Output like: "git version 2.34.1" / "git version 2.39.2.windows.1"
+    parts = out.split()
+    if len(parts) < 3:
+        return (0, 0, 0)
+    nums = parts[2].split(".")
+    try:
+        return tuple(int(x) for x in nums[:3] if x.isdigit())
+    except Exception:
+        return (0, 0, 0)
+
+
+def _install_jihu_via_config_global():
+    # Path A (git >= 2.32): isolated temp gitconfig via GIT_CONFIG_GLOBAL.
+    # No race with other git processes; a leaked temp file (on hard kill)
+    # is harmless.
+    fd, path = tempfile.mkstemp(suffix=".gitconfig", prefix="esp_jihu_")
+    os.close(fd)
     for repo in MIRROR_LIST:
+        github = f"https://github.com/{repo}"
         jihu = f"https://jihulab.com/esp-mirror/{repo}"
-        os.system(f"git config --global --unset url.{jihu}.insteadOf")
-        os.system(f"git config --global --unset url.{jihu}.git.insteadOf")
+        for key in (f"url.{jihu}.insteadOf", f"url.{jihu}.git.insteadOf"):
+            subprocess.run(["git", "config", "--file", path, key, github],
+                           check=True)
+    os.environ["GIT_CONFIG_GLOBAL"] = path
+
+    def _cleanup():
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    atexit.register(_cleanup)
+
+
+def _install_jihu_via_global_fallback():
+    # Path B (git < 2.32): write into the user's real --global gitconfig.
+    # Trade-off on old git: rules are visible to other concurrent git
+    # processes during the window, and a hard kill will leave them behind.
+    # atexit handles normal exits.
+    print("[WARN] git < 2.32 detected; falling back to --global gitconfig. "
+          "If this process is killed, run "
+          "`bash platform/ESP32/tools/jihu-mirror.sh unset` to clean up.")
+    for repo in MIRROR_LIST:
+        github = f"https://github.com/{repo}"
+        jihu = f"https://jihulab.com/esp-mirror/{repo}"
+        for key in (f"url.{jihu}.insteadOf", f"url.{jihu}.git.insteadOf"):
+            subprocess.run(["git", "config", "--global", key, github],
+                           check=True)
+
+    def _unset():
+        for repo in MIRROR_LIST:
+            jihu = f"https://jihulab.com/esp-mirror/{repo}"
+            for key in (f"url.{jihu}.insteadOf", f"url.{jihu}.git.insteadOf"):
+                subprocess.run(["git", "config", "--global", "--unset", key],
+                               check=False)
+    atexit.register(_unset)
+
+
+def _ensure_jihu_mirror():
+    global _JIHU_MIRROR_READY
+    if _JIHU_MIRROR_READY:
+        return
+    if _git_version_tuple() >= (2, 32, 0):
+        _install_jihu_via_config_global()
+    else:
+        _install_jihu_via_global_fallback()
+    _JIHU_MIRROR_READY = True
 
 
 def _join_cmd(cmds) -> str:
@@ -340,17 +407,6 @@ def build_git_command_with_jihu_mirror(cmds) -> str:
     if not cmds or cmds[0] != "git" or get_country_code() != "China":
         return _join_cmd(cmds)
 
-    print("Use temporary jihulab mirror for current git command ...")
-
-    # Set mirror rules one by one to avoid Windows CMD 8191-char limit.
-    global _JIHU_MIRROR_INSTALLED
-    for repo in MIRROR_LIST:
-        github = f"https://github.com/{repo}"
-        jihu = f"https://jihulab.com/esp-mirror/{repo}"
-        os.system(f"git config --global url.{jihu}.insteadOf {github}")
-        os.system(f"git config --global url.{jihu}.git.insteadOf {github}")
-    if not _JIHU_MIRROR_INSTALLED:
-        atexit.register(_unset_jihu_mirror)
-        _JIHU_MIRROR_INSTALLED = True
-
+    print("Use jihulab mirror for current git command ...")
+    _ensure_jihu_mirror()
     return _join_cmd(cmds)
