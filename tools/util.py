@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
+import atexit
 import os
 import platform
 import shlex
 import shutil
+import subprocess
+
 import requests
 
 
@@ -312,21 +315,42 @@ MIRROR_LIST = [
 ]
 
 
+_JIHU_MIRROR_INSTALLED = False
+
+
+def _unset_jihu_mirror():
+    for repo in MIRROR_LIST:
+        jihu = f"https://jihulab.com/esp-mirror/{repo}"
+        os.system(f"git config --global --unset url.{jihu}.insteadOf")
+        os.system(f"git config --global --unset url.{jihu}.git.insteadOf")
+
+
+def _join_cmd(cmds) -> str:
+    # shlex.quote uses POSIX rules: on Windows CMD it produces single-quoted
+    # paths that CMD treats as literal characters (e.g. 'D:\\foo' becomes part
+    # of the argument). Use subprocess.list2cmdline on Windows for proper
+    # CMD-style quoting; fall back to shlex.quote elsewhere.
+    str_cmds = [str(c) for c in cmds]
+    if get_system_name() == "windows":
+        return subprocess.list2cmdline(str_cmds)
+    return " ".join(shlex.quote(c) for c in str_cmds)
+
+
 def build_git_command_with_jihu_mirror(cmds) -> str:
-    quoted_cmds = [shlex.quote(str(cmd)) for cmd in cmds]
     if not cmds or cmds[0] != "git" or get_country_code() != "China":
-        return " ".join(quoted_cmds)
+        return _join_cmd(cmds)
 
     print("Use temporary jihulab mirror for current git command ...")
 
-    mirror_args = []
+    # Set mirror rules one by one to avoid Windows CMD 8191-char limit.
+    global _JIHU_MIRROR_INSTALLED
     for repo in MIRROR_LIST:
         github = f"https://github.com/{repo}"
         jihu = f"https://jihulab.com/esp-mirror/{repo}"
-        mirror_args.extend([
-            "-c", f"url.{jihu}.insteadOf={github}",
-            "-c", f"url.{jihu}.git.insteadOf={github}",
-        ])
+        os.system(f"git config --global url.{jihu}.insteadOf {github}")
+        os.system(f"git config --global url.{jihu}.git.insteadOf {github}")
+    if not _JIHU_MIRROR_INSTALLED:
+        atexit.register(_unset_jihu_mirror)
+        _JIHU_MIRROR_INSTALLED = True
 
-    quoted_args = [shlex.quote(arg) for arg in mirror_args]
-    return " ".join(["git", *quoted_args, *quoted_cmds[1:]])
+    return _join_cmd(cmds)
