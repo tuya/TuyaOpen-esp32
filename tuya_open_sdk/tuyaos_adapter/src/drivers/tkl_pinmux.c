@@ -43,6 +43,10 @@ extern void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda
 extern void __tkl_pwm_set_pin(TUYA_GPIO_NUM_E pin, TUYA_PWM_NUM_E channel);
 extern void __tkl_uart1_set_txd_pin(TUYA_PIN_NAME_E pin);
 extern void __tkl_uart1_set_rxd_pin(TUYA_PIN_NAME_E pin);
+extern void __tkl_spi_set_mosi_pin(TUYA_SPI_NUM_E port, const TUYA_PIN_NAME_E mosi_pin);
+extern void __tkl_spi_set_miso_pin(TUYA_SPI_NUM_E port, const TUYA_PIN_NAME_E miso_pin);
+extern void __tkl_spi_set_sclk_pin(TUYA_SPI_NUM_E port, const TUYA_PIN_NAME_E sclk_pin);
+extern void __tkl_spi_set_cs_pin(TUYA_SPI_NUM_E port, const TUYA_PIN_NAME_E cs_pin);
 /**
  * @brief tuya io pinmux func
  *
@@ -119,11 +123,45 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
             break;
 
         case TUYA_SPI0_MISO:
-        case TUYA_SPI0_MOSI:
-        case TUYA_SPI0_CLK: 
-        case TUYA_SPI0_CS:
+            __tkl_spi_set_miso_pin(TUYA_SPI_NUM_0, pin);
             break;
-
+        case TUYA_SPI0_MOSI:
+            __tkl_spi_set_mosi_pin(TUYA_SPI_NUM_0, pin);
+            break;
+        case TUYA_SPI0_CLK:
+            __tkl_spi_set_sclk_pin(TUYA_SPI_NUM_0, pin);
+            break;
+        case TUYA_SPI0_CS:
+            __tkl_spi_set_cs_pin(TUYA_SPI_NUM_0, pin);
+            break;
+#if !defined(CONFIG_IDF_TARGET_ESP32C3) && !defined(CONFIG_IDF_TARGET_ESP32C6)
+        case TUYA_SPI1_MISO:
+            __tkl_spi_set_miso_pin(TUYA_SPI_NUM_1, pin);
+            break;
+        case TUYA_SPI1_MOSI:
+            __tkl_spi_set_mosi_pin(TUYA_SPI_NUM_1, pin);
+            break;
+        case TUYA_SPI1_CLK:
+            __tkl_spi_set_sclk_pin(TUYA_SPI_NUM_1, pin);
+            break;
+        case TUYA_SPI1_CS:
+            __tkl_spi_set_cs_pin(TUYA_SPI_NUM_1, pin);
+            break;
+#endif
+#if 0
+        case TUYA_SPI2_MISO:
+            __tkl_spi_set_miso_pin(TUYA_SPI_NUM_2, pin);
+            break;
+        case TUYA_SPI2_MOSI:
+            __tkl_spi_set_mosi_pin(TUYA_SPI_NUM_2, pin);
+            break;
+        case TUYA_SPI2_CLK:
+            __tkl_spi_set_sclk_pin(TUYA_SPI_NUM_2, pin);
+            break;
+        case TUYA_SPI2_CS:
+            __tkl_spi_set_cs_pin(TUYA_SPI_NUM_2, pin);
+            break;
+#endif
         default:
             break;
 

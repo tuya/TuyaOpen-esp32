@@ -28,6 +28,7 @@ list(APPEND SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_pinmux.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_pwm.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_rtc.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_spi.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_timer.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_uart.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_watchdog.c"
@@ -104,6 +105,8 @@ set(adapter_requires
     app_update
     esp_lcd_touch_ft5x06
     esp_lcd_touch_gt911
+    fatfs
+    sdmmc
 )
 
 # espressif__esp_hosted is only available on chips without native Wi-Fi
