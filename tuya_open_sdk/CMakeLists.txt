@@ -5,6 +5,14 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(EXTRA_COMPONENT_DIRS tuyaos_adapter)
+# Generic drop-in port: dirs listed in $TUYAOS_EXTRA_COMPONENT_DIRS (space-separated) become
+# IDF component ROOTS — every subdir under each is auto-registered as a component. Lets an app
+# add project-private, esp-idf-visible components with NO edit to this file. Set by the TuyaOpen
+# CLI (tools/cli_command/cli_build.py) to <app>/components when that dir exists.
+if(NOT "$ENV{TUYAOS_EXTRA_COMPONENT_DIRS}" STREQUAL "")
+    string(REPLACE " " ";" _tuyaos_extra_comp_dirs "$ENV{TUYAOS_EXTRA_COMPONENT_DIRS}")
+    list(APPEND EXTRA_COMPONENT_DIRS ${_tuyaos_extra_comp_dirs})
+endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(tuya_open_sdk)

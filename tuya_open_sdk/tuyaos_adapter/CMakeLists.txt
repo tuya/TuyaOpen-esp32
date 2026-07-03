@@ -41,31 +41,23 @@ else()
     list(APPEND SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_bt.c")
 endif()
 
-set(include_dirs
-    "include/adc"
-    "include/dma2d"
-    "include/bluetooth"
-    "include/flash"
-    "include/i2c"
-    "include/i2s"
-    "include/gpio"
-    "include/hci"
-    "include/init/include"
-    "include/network"
-    "include/pinmux"
-    "include/pwm"
-    "include/rtc"
-    "include/spi"
-    "include/system"
-    "include/timer"
-    "include/uart"
-    "include/watchdog"
-    "include/wifi"
-    "include/utilities/include"
-    "include/vad"
-    "include/kws"
-    "include/media"
-    )
+# Expose ALL header dirs under include/ (mirrors the T5AI / T3 adapters) so any
+# REQUIRES-tuyaos_adapter consumer resolves every public tkl/tal header — no
+# hand-maintained subset to drift out of date (the old curated list omitted
+# include/security and include/lwip, so tal_api.h failed on tkl_hash.h).
+macro(FIND_INCLUDE_DIR result curdir)
+    file(GLOB_RECURSE children "${curdir}/*.h")
+    set(dirlist "")
+    foreach(child ${children})
+        string(REGEX REPLACE "(.*)/.*" "\\1" DIR_NAME ${child})
+        if((IS_DIRECTORY ${DIR_NAME}) AND (NOT (${DIR_NAME} IN_LIST dirlist)))
+            list(APPEND dirlist ${DIR_NAME})
+        endif()
+    endforeach()
+    set(${result} ${dirlist})
+endmacro()
+
+FIND_INCLUDE_DIR(include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
 
