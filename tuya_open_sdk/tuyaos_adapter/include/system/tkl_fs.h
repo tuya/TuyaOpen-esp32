@@ -17,9 +17,35 @@
 extern "C" {
 #endif
 
+typedef enum {
+    DEV_INNER_FLASH,
+    DEV_EXT_FLASH,
+    DEV_SDCARD,
+    DEV_USB_DISK,
+} FS_DEV_TYPE_T;
+
 /********************************************************************************
  *********************************tuya_os_fs_intf********************************
  ********************************************************************************/
+
+/**
+ * @brief Mount a file system
+ *
+ * @param[in] path: mount point path
+ * @param[in] dev_type: device type (DEV_SDCARD, etc.)
+ *
+ * @return OPRT_OK on success, others on error
+ */
+int tkl_fs_mount(const char *path, FS_DEV_TYPE_T dev_type);
+
+/**
+ * @brief Unmount a file system
+ *
+ * @param[in] path: mount point path
+ *
+ * @return OPRT_OK on success, others on error
+ */
+int tkl_fs_unmount(const char *path);
 
 /**
 * @brief Make directory

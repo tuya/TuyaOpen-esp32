@@ -2231,7 +2231,7 @@ CONFIG_USB_OTG_SUPPORTED=y
 #
 # Virtual file system
 #
-# CONFIG_VFS_SUPPORT_IO is not set
+CONFIG_VFS_SUPPORT_IO=y
 # end of Virtual file system
 
 #
