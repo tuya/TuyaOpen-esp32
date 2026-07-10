@@ -22,20 +22,18 @@ if(NOT "$ENV{TUYAOS_LIBS}" STREQUAL "")
         add_prebuilt_library(${lib} "${TUYA_OPENSDK_LIB_PATH}/lib${lib}.a" REQUIRES tuyaos_adapter mbedtls)
         target_link_libraries(${COMPONENT_LIB} PUBLIC ${lib})
     endforeach()
+
+    # Use --start-group/--end-group to resolve circular dependencies between
+    # prebuilt libs and tuyaos_adapter, eliminating the need for manual -u flags.
+    set(TUYA_PREBUILT_LIB_PATHS "")
+    foreach(lib ${TUYAOS_LIBS_LIST})
+        list(APPEND TUYA_PREBUILT_LIB_PATHS "${TUYA_OPENSDK_LIB_PATH}/lib${lib}.a")
+    endforeach()
     target_link_libraries(${COMPONENT_LIB} INTERFACE
-                            "-u lv_mem_init"
-                            "-u lv_mem_deinit"
-                            "-u lv_mem_add_pool"
-                            "-u lv_malloc_core"
-                            "-u lv_realloc_core"
-                            "-u lv_free_core"
-                            "-u lv_mem_monitor_core"
-                            "-u lv_mem_test_core"
-                            "-u lv_port_log_print"
-                            "-u tdl_audio_driver_register"
-                            "-u tdl_tp_device_register"
-                            "-u tdl_disp_device_register"
-                        )
+        "-Wl,--start-group"
+        ${TUYA_PREBUILT_LIB_PATHS}
+        "-Wl,--end-group"
+    )
 endif()
 
 target_include_directories(mbedcrypto

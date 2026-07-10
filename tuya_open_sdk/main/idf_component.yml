@@ -30,3 +30,8 @@ dependencies:
     version: "0.8.*"
     rules:
       - if: "target == esp32p4"
+  # DVP camera (ESP32 / ESP32-S3).
+  espressif/esp32-camera:
+    version: ">=2.0.9"
+    rules:
+      - if: "target in [esp32, esp32s3]"
