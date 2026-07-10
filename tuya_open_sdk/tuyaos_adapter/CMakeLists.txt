@@ -69,6 +69,7 @@ if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
 
 endif()
 
+# Board common TDD layer (lcd, button, led, audio, camera drivers).
 if(NOT "$ENV{TUYAOS_BOARD_PATH}" STREQUAL "")
     if(EXISTS "$ENV{TUYAOS_BOARD_PATH}/common/CMakeLists.txt")
         include("$ENV{TUYAOS_BOARD_PATH}/common/CMakeLists.txt")
@@ -100,6 +101,11 @@ set(adapter_requires
     fatfs
     sdmmc
 )
+
+# esp32-camera DVP driver (ESP32 / ESP32-S3 only)
+if(IDF_TARGET STREQUAL "esp32s3" OR IDF_TARGET STREQUAL "esp32")
+    list(APPEND adapter_requires espressif__esp32-camera)
+endif()
 
 # espressif__esp_hosted is only available on chips without native Wi-Fi
 # (currently ESP32-P4 paired with a C6 co-processor). On S3/C3/ESP32 this

@@ -30,7 +30,7 @@
 void *tkl_system_malloc(size_t size)
 {
 #if defined(CONFIG_SPIRAM)
-    return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+    return heap_caps_malloc(size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 #else
     return malloc(size);
 #endif // CONFIG_SPIRAM
