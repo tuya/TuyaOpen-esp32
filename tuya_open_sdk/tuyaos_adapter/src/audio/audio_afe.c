@@ -193,7 +193,11 @@ OPERATE_RET audio_afe_processor_init(void)
     }
 
     // Initialize ring buffer
+#if defined(TUYA_PSARM_SUPPORT)
+    rt = tuya_ring_buff_create(FEED_RB_SIZE, OVERFLOW_PSRAM_STOP_TYPE, &sg_afe_proce.rb);
+#else
     rt = tuya_ring_buff_create(FEED_RB_SIZE, OVERFLOW_STOP_TYPE, &sg_afe_proce.rb);
+#endif
     if (OPRT_OK != rt) {
         ESP_LOGE(TAG, "Failed to create ring buffer");
         return rt;
