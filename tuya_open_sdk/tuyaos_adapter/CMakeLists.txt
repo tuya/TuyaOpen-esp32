@@ -33,6 +33,7 @@ list(APPEND SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_uart.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_watchdog.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_wifi.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tuyaopen/tuyaopen_license.c"
     )
 
 if(CONFIG_IDF_TARGET_ESP32S2)
@@ -58,6 +59,7 @@ macro(FIND_INCLUDE_DIR result curdir)
 endmacro()
 
 FIND_INCLUDE_DIR(include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/include")
+list(APPEND include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/tuyaopen")
 
 if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
 
