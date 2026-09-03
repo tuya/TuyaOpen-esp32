@@ -74,7 +74,7 @@ int tkl_fs_remove(const char* path);
 * @brief Get file mode
 *
 * @param[in] path: path of directory
-* @param[out] mode: bit attibute of directory
+* @param[out] mode: bit attribute of directory
 *
 * @note This API is used for getting file mode.
 *
@@ -253,11 +253,11 @@ int tkl_fsync(int fd);
 char* tkl_fgets(char* buf, int len, TUYA_FILE file);
 
 /**
-* @brief Check wheather to reach the end fo the file
+* @brief Check whether to reach the end of the file
 *
 * @param[in] file: file handle
 *
-* @note This API is used to check wheather to reach the end fo the file
+* @note This API is used to check whether to reach the end of the file
 *
 * @return 0 on not eof, others on eof
 */
@@ -294,7 +294,7 @@ int64_t tkl_ftell(TUYA_FILE file);
 *
 * @note This API is used to get the size of file.
 *
-* @return the sizeof of file
+* @return the size of file
 */
 int tkl_fgetsize(const char *filepath);
 
