@@ -1,6 +1,6 @@
 /**
 * @file tkl_init_system.h
-* @brief Common process - tkl init system object descption
+* @brief Common process - tkl init system object description
 * @version 0.1
 * @date 2021-08-06
 *
