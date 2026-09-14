@@ -1,9 +1,8 @@
-
 # set target system
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR Linux)
 
-# set toolchain
+# set toolchain (RISC-V for ESP32-S31)
 set(TOOLCHAIN_DIR "${IDF_TOOLS_PATH}/tools/riscv32-esp-elf/esp-16.1.0_20260609/riscv32-esp-elf/bin")
 set(TOOLCHAIN_PRE "riscv32-esp-elf-")
 
@@ -26,5 +25,5 @@ SET (CMAKE_C_COMPILER_WORKS 1)
 SET (CMAKE_CXX_COMPILER_WORKS 1)
 
 # set CFLAGS
-set(CMAKE_C_FLAGS " -march=rv32imac_zicsr_zifencei  -fdiagnostics-color=always -fdiagnostics-color=always -ffunction-sections -fdata-sections -Wall -Werror=all -Wno-error=unused-function -Wno-error=unused-variable -Wno-error=unused-but-set-variable -Wno-error=deprecated-declarations -Wextra -Wno-error=extra -Wno-unused-parameter -Wno-sign-compare -Wno-enum-conversion -gdwarf-4 -ggdb -nostartfiles -Os -freorder-blocks -fstrict-volatile-bitfields -fno-jump-tables -fno-tree-switch-conversion -Wno-error=incompatible-pointer-types -std=gnu17 -Wno-old-style-declaration -Wno-unused-variable -Wno-format")
+set(CMAKE_C_FLAGS "-mcmodel=medany -march=rv32imafcb_zicsr_zifencei_zcb_zcmp_zcmt_xesploop_xespv -mabi=ilp32f -ffunction-sections -fdata-sections -Wall -Werror=all -Wno-error=unused-function -Wno-error=incompatible-pointer-types -Wno-error=unused-variable -Wno-error=unused-but-set-variable -Wno-error=deprecated-declarations -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-enum-conversion -gdwarf-4 -ggdb -Os -freorder-blocks -fstrict-volatile-bitfields -fno-jump-tables -fno-tree-switch-conversion -std=gnu17 -Wno-old-style-declaration")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -specs=picolibc.specs -D__PICOLIBC_ERRNO_FUNCTION=__errno -D__STDC_WANT_LIB_EXT1__=0")

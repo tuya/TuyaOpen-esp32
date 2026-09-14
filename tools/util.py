@@ -119,6 +119,10 @@ def execute_idf_commands(root, cmd, directory) -> bool:
     idf_tools_path = os.path.join(root, ".espressif")
     os.environ["IDF_PATH"] = idf_path
     os.environ["IDF_TOOLS_PATH"] = idf_tools_path
+    # IDF 6.x export.sh can't infer its location when sourced by /bin/sh with an
+    # absolute path ($0 is empty in dash) and then refuses the env IDF_PATH
+    # unless forced. Older export.sh ignores this variable.
+    os.environ["IDF_PATH_FORCE"] = "1"
     if get_system_name() == "windows":
         export_bat = os.path.join(idf_path, "export.bat")
         command = f"{export_bat} && "
@@ -151,7 +155,8 @@ def set_target(root, chip, suffix="", flash_size=None):
             f.write("\n# --- flash size (auto, from CONFIG_PLATFORM_FLASHSIZE_*) ---\n")
             f.write(f"CONFIG_ESPTOOLPY_FLASHSIZE_{flash_size}MB=y\n")
             f.write(f'CONFIG_ESPTOOLPY_FLASHSIZE="{flash_size}MB"\n')
-    cmd = f"idf.py set-target {chip}"
+    # --preview unlocks preview targets (esp32s31 is preview in IDF 6.x)
+    cmd = f"idf.py --preview set-target {chip}"
     directory = os.path.join(root, "tuya_open_sdk")
     if not execute_idf_commands(root, cmd, directory):
         return False

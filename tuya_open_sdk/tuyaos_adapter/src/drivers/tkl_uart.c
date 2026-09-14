@@ -11,12 +11,14 @@
 
 // --- BEGIN: user defines and implements ---
 #include "tkl_uart.h"
+#include "tuya_kconfig.h"
 #include "tuya_error_code.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/uart.h"
+#include <string.h>
 // #include "driver/gpio.h"
 #include "soc/gpio_num.h"
 
@@ -358,10 +360,15 @@ OPERATE_RET tkl_uart_init(TUYA_UART_NUM_E port_id, TUYA_UART_BASE_CFG_T *cfg)
  	uart_port_t uart_num;
 	uart_config_t uart_cfg;
     int intr_alloc_flags = 0, uart_txd, uart_rxd, uart_rts, uart_cts;
-    
+
    if (cfg == NULL)
         return OPRT_INVALID_PARM;
-    
+
+    /* IDF 6.x uart_config_t has rx_glitch_filt_thresh: garbage on the stack
+     * trips the clk_cycles <= UART_GLITCH_FILT_V assert in uart_ll. */
+    memset(&uart_cfg, 0, sizeof(uart_cfg));
+    uart_cfg.rx_glitch_filt_thresh = 0; /* RX glitch filter off */
+
     uart_num = (uart_port_t)port_id;
     if (uart_num >= MAX_UART_NUM) {
         return OPRT_INVALID_PARM;

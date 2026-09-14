@@ -35,7 +35,7 @@
 #elif defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6)
   #define TKL_SPI_PORT_COUNT  1        /* only SPI2_HOST available */
   #define TKL_SPI_HOST0       SPI2_HOST
-#elif defined(CONFIG_IDF_TARGET_ESP32P4)
+#elif defined(CONFIG_IDF_TARGET_ESP32P4) || defined(CONFIG_IDF_TARGET_ESP32S31)
   #define TKL_SPI_PORT_COUNT  2        /* SPI2_HOST + SPI3_HOST */
   #define TKL_SPI_HOST0       SPI2_HOST
   #define TKL_SPI_HOST1       SPI3_HOST

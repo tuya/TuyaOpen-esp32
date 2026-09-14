@@ -1,7 +1,7 @@
 /**
  * @file tkl_dma2d.c
- * @brief 2D-DMA hardware acceleration for ESP32-P4, backed by the PPA
- *        (Pixel-Processing Accelerator).
+ * @brief 2D-DMA hardware acceleration for ESP32 targets with PPA, backed by
+ *        the Pixel-Processing Accelerator.
  *
  * The PPA's scale-rotate-mirror (SRM) engine does a 2D block transfer with
  * optional pixel-format conversion, which covers both tkl_dma2d_memcpy()
@@ -52,9 +52,14 @@ static int __fmt_to_srm_cm(TUYA_FRAME_FMT_E fmt, ppa_srm_color_mode_t *cm, uint8
         *cm  = PPA_SRM_COLOR_MODE_RGB888;
         *bpp = 3;
         return 0;
+    case TUYA_FRAME_FMT_YUV422:
+        /* Tuya's generic YUV422 frame convention is UYVY.  On ESP32-S31
+         * the PPA accepts UYVY as an SRM input and can convert it to RGB565
+         * or RGB888, which is the path used by the camera preview. */
+        *cm  = PPA_SRM_COLOR_MODE_YUV422_UYVY;
+        *bpp = 2;
+        return 0;
     default:
-        /* YUV422 / YUV420 / others are not supported by the PPA SRM input on
-         * this target. */
         return -1;
     }
 }

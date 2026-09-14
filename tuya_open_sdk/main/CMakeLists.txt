@@ -36,7 +36,8 @@ if(NOT "$ENV{TUYAOS_LIBS}" STREQUAL "")
     )
 endif()
 
-target_include_directories(mbedcrypto
+# IDF >= 6.x folds mbedcrypto into the single "mbedtls" component target
+target_include_directories(mbedtls
     PUBLIC
         $ENV{IDF_PATH}/components/mbedtls/port/mbedtls_rom
     )

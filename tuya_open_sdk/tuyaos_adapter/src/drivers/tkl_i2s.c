@@ -56,6 +56,13 @@ static TKL_I2S_GPIO_CFG_T sg_i2s_gpio_cfg[TUYA_I2S_NUM_MAX] = {
 static TKL_I2S_GPIO_CFG_T sg_i2s_gpio_cfg[TUYA_I2S_NUM_MAX] = {
     {GPIO_NUM_12, GPIO_NUM_10, GPIO_NUM_11}, // I2S0 — ESP32-P4-C6 dev board (bclk/ws/data)
 };
+#elif defined(CONFIG_IDF_TARGET_ESP32S31)
+static TKL_I2S_GPIO_CFG_T sg_i2s_gpio_cfg[TUYA_I2S_NUM_MAX] = {
+    /* ESP32-S31-Korvo-1: bclk=3 ws=4 dout=5 din=6. This table models one
+     * shared data pin, so only DOUT is mapped; the codec TDD (which has
+     * separate do/di fields) is the real audio path on this board. */
+    {GPIO_NUM_3, GPIO_NUM_4, GPIO_NUM_5},   // I2S0
+};
 #endif
 
 static TKL_I2S_HANDLE_T sg_i2s_hdl[TUYA_I2S_NUM_MAX] = {0};
@@ -117,7 +124,7 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *i2s_
         clk_pin, ws_pin, do_pin, di_pin, i2s_tx_hdl, i2s_rx_hdl);
 
     i2s_chan_config_t i2s_chan_cfg = {
-        .id = (i2s_port_t)i2s_num,
+        .id = i2s_num, /* IDF 6.x: i2s_chan_config_t.id is a plain int (i2s_port_t is gone) */
         .role = I2S_ROLE_MASTER,
         .dma_desc_num = 6,
         .dma_frame_num = 240,

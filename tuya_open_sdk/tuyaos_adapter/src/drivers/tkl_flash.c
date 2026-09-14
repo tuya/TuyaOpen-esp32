@@ -126,7 +126,9 @@ static bool __stack_in_psram(void)
 {
 #if defined(CONFIG_SPIRAM)
     void *sp;
-#ifdef CONFIG_IDF_TARGET_ESP32P4
+/* P4 and S31 name the PSRAM window SOC_EXTRAM_LOW/HIGH; older RISC-V chips
+ * (S3/C3/...) use SOC_EXTRAM_DATA_LOW/HIGH. Pick by what the target defines. */
+#if defined(CONFIG_IDF_TARGET_ESP32P4) || !defined(SOC_EXTRAM_DATA_LOW)
     __asm__ volatile("mv %0, sp" : "=r"(sp));
     return ((uintptr_t)sp >= SOC_EXTRAM_LOW && (uintptr_t)sp < SOC_EXTRAM_HIGH);
 #else

@@ -400,7 +400,7 @@ int tkl_wifi_get_mac(const WF_IF_E wf, NW_MAC_S *mac)
 {
     assert(NULL != mac);
 
-    if (ESP_OK != esp_wifi_get_mac(WF_AP == wf ? ESP_IF_WIFI_AP : ESP_IF_WIFI_STA, mac->mac)) {
+    if (ESP_OK != esp_wifi_get_mac(WF_AP == wf ? WIFI_IF_AP : WIFI_IF_STA, mac->mac)) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_get_mac failed(wf=%d)", __func__, wf);
         return OPRT_COM_ERROR;
     }
@@ -456,7 +456,7 @@ OPERATE_RET tkl_wifi_set_mac(const WF_IF_E wf, const NW_MAC_S *mac)
         return OPRT_COM_ERROR;
     }
 
-    ret = esp_wifi_set_mac((WF_AP == wf) ? ESP_IF_WIFI_AP : ESP_IF_WIFI_STA, mac->mac);
+    ret = esp_wifi_set_mac((WF_AP == wf) ? WIFI_IF_AP : WIFI_IF_STA, mac->mac);
     if (ESP_OK != ret) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_mac failed(ret=%d)", __func__, ret);
         return OPRT_COM_ERROR;
@@ -920,7 +920,7 @@ OPERATE_RET tkl_wifi_station_connect(const int8_t *ssid, const int8_t *passwd)
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
-    if (ESP_OK != esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_cfg)) {
+    if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg)) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }
@@ -1075,7 +1075,7 @@ OPERATE_RET tkl_wifi_start_ap(const WF_AP_CFG_IF_S *cfg)
         //ESP_LOGI(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
-    if (ESP_OK != esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_cfg)) {
+    if (ESP_OK != esp_wifi_set_config(WIFI_IF_AP, &wifi_cfg)) {
         //ESP_LOGI(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }
@@ -1234,7 +1234,7 @@ OPERATE_RET tkl_wifi_station_fast_connect(const FAST_WF_CONNECTED_AP_INFO_T *fas
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
-    if (ESP_OK != esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_cfg)) {
+    if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg)) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }

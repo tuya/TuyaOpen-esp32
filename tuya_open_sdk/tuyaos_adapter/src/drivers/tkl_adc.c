@@ -29,6 +29,7 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "hal/adc_types.h"
+#include "hal/adc_ll.h"
 
 #include "tuya_error_code.h"
 #include "tuya_cloud_types.h"
@@ -44,8 +45,13 @@ static const char *TAG = "tkl_adc";
 /** Maximum number of ADC units we support (ADC1 / ADC2) */
 #define ADC_UNIT_MAX_SUPPORTED  2
 
-/** Maximum number of ADC channels per unit */
+/** Maximum number of ADC channels per unit: older chips spell it in
+ * soc_caps, IDF 6.x targets (S31) only expose ADC_LL_MAX_CHANNEL_NUM. */
+#if defined(SOC_ADC_MAX_CHANNEL_NUM)
 #define ADC_CHAN_MAX             SOC_ADC_MAX_CHANNEL_NUM
+#else
+#define ADC_CHAN_MAX             ADC_LL_MAX_CHANNEL_NUM
+#endif
 
 /** Per-unit runtime context */
 typedef struct {
@@ -93,6 +99,16 @@ static adc_bitwidth_t __width_to_esp(uint8_t width)
         case 13: return ADC_BITWIDTH_13;
         default: return ADC_BITWIDTH_DEFAULT;
     }
+}
+
+/* Chips like the S31 have a fixed, non-programmable attenuation step. */
+static adc_atten_t __attenuation_default(void)
+{
+#if SOC_ADC_ATTEN_NUM == 1
+    return ADC_ATTEN_DB_0;
+#else
+    return ADC_ATTEN_DB_12;
+#endif
 }
 
 /**
@@ -222,7 +238,12 @@ OPERATE_RET tkl_adc_init(TUYA_ADC_NUM_E port_num, TUYA_ADC_BASE_CFG_T *cfg)
 
     /* ---------- 2. Configure each channel ---------- */
     adc_bitwidth_t bw = __width_to_esp(cfg->width);
-    adc_atten_t   att = ADC_ATTEN_DB_12;   /* 0 ~ 3.3 V full range */
+    /* Some targets only offer one bitwidth (S31: 17). Fall back to DEFAULT. */
+    if ((bw != ADC_BITWIDTH_DEFAULT) &&
+        ((int)bw < ADC_LL_RTC_MIN_BITWIDTH || (int)bw > ADC_LL_RTC_MAX_BITWIDTH)) {
+        bw = ADC_BITWIDTH_DEFAULT;
+    }
+    adc_atten_t   att = __attenuation_default();   /* S31: fixed; others: 0 ~ 3.3 V */
 
     adc_oneshot_chan_cfg_t chan_cfg = {
         .bitwidth = bw,
@@ -242,8 +263,8 @@ OPERATE_RET tkl_adc_init(TUYA_ADC_NUM_E port_num, TUYA_ADC_BASE_CFG_T *cfg)
                 ctx->handle = NULL;
                 return OPRT_COM_ERROR;
             }
-            ESP_LOGI(TAG, "ADC unit %d channel %d configured (width=%d, atten=DB_12)",
-                     (int)unit, ch, cfg->width);
+            ESP_LOGI(TAG, "ADC unit %d channel %d configured (width=%d, atten=%d)",
+                     (int)unit, ch, cfg->width, (int)att);
         }
     }
 
@@ -252,6 +273,10 @@ OPERATE_RET tkl_adc_init(TUYA_ADC_NUM_E port_num, TUYA_ADC_BASE_CFG_T *cfg)
 
     /* ---------- 4. Save context ---------- */
     memcpy(&ctx->cfg, cfg, sizeof(TUYA_ADC_BASE_CFG_T));
+    /* adc_oneshot_read() returns values at the requested-width magnitude on every
+     * target measured so far: programmable-bitwidth chips honour cfg->width, and
+     * the S31 (fixed 17-bit register field) yields 12-bit-magnitude data anyway.
+     * No alignment shift is needed on top of what the driver returns. */
     ctx->inited = true;
 
     ESP_LOGI(TAG, "ADC unit %d init OK, ch_mask=0x%08lx, ch_nums=%d",

@@ -1,12 +1,8 @@
 dependencies:
-  # esp_wifi_remote / esp_hosted are only needed when the host MCU has no
-  # built-in Wi-Fi/BT and must talk to a co-processor (e.g. ESP32-P4 + C6).
-  # Pulling them in on chips with native Wi-Fi (S3, C3, ...) causes link
-  # conflicts with libnet80211 (multiple definition of wifi_deinit etc.).
-  espressif/esp_wifi_remote:
-    version: "0.14.*"
-    rules:
-      - if: "target == esp32p4"
+  # esp_hosted is only needed when the host MCU has no built-in Wi-Fi/BT and
+  # must talk to a co-processor (e.g. ESP32-P4 + C6). ESP-IDF 6.2 provides
+  # the esp_wifi remote implementation as part of the built-in esp_wifi
+  # component, so do not pull in the obsolete external component here.
   espressif/esp_hosted:
     version: "1.4.*"
     rules:
@@ -18,18 +14,19 @@ dependencies:
   espressif/esp_lcd_panel_io_additions: "^1.0.1"
   espressif/esp_lcd_touch_ft5x06: ~1.0.7
   espressif/esp_lcd_touch_gt911: ">=1.0.0"
+  espressif/esp_lcd_touch_gt1151: ">=1.1.0"
   # ST7701 MIPI-DSI panel driver — ESP32-P4 only (MIPI-DSI is P4-exclusive).
   # Other targets (esp32, esp32s3, ...) have no matching version, so gate it.
   espressif/esp_lcd_st7701:
     version: ">2.0.0"
     rules:
       - if: "target == esp32p4"
-  # MIPI-CSI camera (ESP32-P4 only). esp_video pulls in esp_cam_sensor with
-  # OV5647 etc. Only needed on P4; native-WiFi chips don't have MIPI-CSI.
+  # esp_video camera stack: MIPI-CSI on P4 and DVP on S31. Version 2.2 also
+  # keeps the P4 CSI adapter on the current esp_video API.
   espressif/esp_video:
-    version: "0.8.*"
+    version: "2.2.*"
     rules:
-      - if: "target == esp32p4"
+      - if: "target in [esp32p4, esp32s31]"
   # DVP camera (ESP32 / ESP32-S3).
   espressif/esp32-camera:
     version: ">=2.0.9"

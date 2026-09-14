@@ -1,0 +1,46 @@
+# Base sdkconfig for ESP32-S31 — minimal seed.
+# SOC capability defaults (CONFIG_SOC_*, CONFIG_ESP_ROM_*, ...) are generated
+# by `idf.py set-target esp32s31`; only Tuya-specific non-defaults live here.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+
+# SPIRAM: CONFIG_ENABLE_EXT_RAM (app side) requires the IDF-side CONFIG_SPIRAM
+# define — tuya_ringbuf.h gates OVERFLOW_PSRAM_* on it.
+CONFIG_SPIRAM=y
+
+# tuya TLS uses PSK ciphersuites (LAN/ATOP); same variant as the s3 seed.
+CONFIG_MBEDTLS_PSK_MODES=y
+CONFIG_MBEDTLS_KEY_EXCHANGE_ECDHE_PSK=y
+
+# BT controller only — the BLE host is tuya's own nimble port (src/tal_bluetooth),
+# not IDF's. Without BT_ENABLED the bt component registers empty and
+# tkl_bt.c can't find esp_bt.h. Same setup as the s3 seed.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_CONTROLLER_ONLY=y
+
+# With HW SHA / ROM MD5 accel enabled, mbedtls 4.x compiles out the whole
+# legacy hash API (mbedtls_sha256_*/mbedtls_md5_*) — see esp_config.h
+# "#undef MBEDTLS_SHA256_C" under CONFIG_MBEDTLS_HARDWARE_SHA. Tuya sources
+# (tal_security, tuya_tls) still call the legacy API, so use the software
+# builtin implementations until they move to PSA.
+CONFIG_MBEDTLS_HARDWARE_SHA=n
+CONFIG_MBEDTLS_ROM_MD5=n
+
+# The tuya host-layer archives are built with the toolchain's default
+# (newlib) headers and reference newlib symbols such as _ctype_, which
+# picolibc doesn't provide (different ctype table: _ctype_b). esp_libc's
+# own help recommends switching the app to newlib in this case.
+CONFIG_LIBC_NEWLIB=y
+CONFIG_LIBC_PICOLIBC=n
+
+# ESP32-S31-Korvo-1 onboard OV3660 DVP camera.  These are IDF component
+# symbols and therefore are not retained by TuyaOpen's application Kconfig;
+# keep the board's sensor selection in the S31 platform seed.
+CONFIG_CAMERA_XCLK_USE_LEDC=y
+CONFIG_CAMERA_OV3660=y
+CONFIG_CAMERA_OV3660_AUTO_DETECT_DVP_INTERFACE_SENSOR=y
+CONFIG_CAMERA_OV3660_DVP_YUV422_YUYV_640X480_10FPS=y
+CONFIG_CAMERA_OV3660_DVP_DEFAULT_FMT_YUV422_YUYV_640X480_10FPS=y
+CONFIG_CAM_CTRL_SPI_ENABLE=n
+CONFIG_ESP_VIDEO_ENABLE_HW_JPEG_VIDEO_DEVICE=y
