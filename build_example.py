@@ -111,7 +111,7 @@ def merge_bin(root, chip, build_path, out_bin):
         cmd += f" {addr} {os.path.join(build_path, bin_path)}"
 
     print("Merging bin ...")
-    if not execute_idf_commands(root, cmd, build_path):
+    if not execute_idf_commands(root, chip, cmd, build_path):
         print("Error: Build failed.")
         return False
     return True
@@ -209,7 +209,7 @@ def main():
 
     cmd = "idf.py build"
     directory = os.path.join(root, "tuya_open_sdk")
-    if not execute_idf_commands(root, cmd, directory):
+    if not execute_idf_commands(root, chip, cmd, directory):
         print("Error: Build failed.")
         sys.exit(1)
 

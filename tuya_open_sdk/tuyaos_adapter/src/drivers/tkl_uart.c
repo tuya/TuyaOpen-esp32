@@ -17,6 +17,7 @@
 #include "freertos/portmacro.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
+#include "esp_idf_version.h"
 #include "driver/uart.h"
 #include <string.h>
 // #include "driver/gpio.h"
@@ -364,10 +365,11 @@ OPERATE_RET tkl_uart_init(TUYA_UART_NUM_E port_id, TUYA_UART_BASE_CFG_T *cfg)
    if (cfg == NULL)
         return OPRT_INVALID_PARM;
 
-    /* IDF 6.x uart_config_t has rx_glitch_filt_thresh: garbage on the stack
-     * trips the clk_cycles <= UART_GLITCH_FILT_V assert in uart_ll. */
     memset(&uart_cfg, 0, sizeof(uart_cfg));
+#if ESP_IDF_VERSION_MAJOR >= 6
+    /* IDF 6.x validates this extra configuration field in uart_ll. */
     uart_cfg.rx_glitch_filt_thresh = 0; /* RX glitch filter off */
+#endif
 
     uart_num = (uart_port_t)port_id;
     if (uart_num >= MAX_UART_NUM) {

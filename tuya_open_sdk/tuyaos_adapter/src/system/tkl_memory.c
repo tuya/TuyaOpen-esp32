@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "esp_heap_caps.h"
+#include "esp_idf_version.h"
 // --- END: user defines and implements ---
 
 /**
@@ -30,7 +31,11 @@
 void *tkl_system_malloc(size_t size)
 {
 #if defined(CONFIG_SPIRAM)
+#if ESP_IDF_VERSION_MAJOR >= 6
     return heap_caps_malloc(size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+#else
+    return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+#endif
 #else
     return malloc(size);
 #endif // CONFIG_SPIRAM

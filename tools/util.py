@@ -15,6 +15,50 @@ import requests
 COUNTRY_CODE = ""  # "China" or other
 
 
+# Keep established ESP32 targets on the validated ESP-IDF v5.4 release.
+# ESP32-S31 was developed against the pinned master revision below and needs
+# its own source tree and tools cache.  Do not make other targets inherit that
+# unvalidated IDF upgrade merely because they share this platform repository.
+DEFAULT_IDF_VERSION = "v5.4"
+DEFAULT_IDF_REVISION = DEFAULT_IDF_VERSION
+IDF_VERSION_BY_TARGET = {
+    "esp32s31": "master",
+}
+IDF_REVISION_BY_TARGET = {
+    "esp32s31": "2067f3ae32b7e7b61a0f3a052df63d619cd7c61d",
+}
+
+def get_idf_version(target):
+    return IDF_VERSION_BY_TARGET.get(target, DEFAULT_IDF_VERSION)
+
+
+def get_idf_revision(target):
+    return IDF_REVISION_BY_TARGET.get(target, DEFAULT_IDF_REVISION)
+
+
+def get_idf_paths(root, target):
+    """Return the ESP-IDF and tools cache paths required by *target*."""
+    version = get_idf_version(target)
+    return (
+        version,
+        os.path.join(root, f"esp-idf-{version}"),
+        os.path.join(root, ".espressif", version),
+    )
+
+
+def export_idf_environment(root, target):
+    """Select the ESP-IDF environment for *target* in this process."""
+    version, idf_path, idf_tools_path = get_idf_paths(root, target)
+    os.environ["IDF_PATH"] = idf_path
+    os.environ["IDF_TOOLS_PATH"] = idf_tools_path
+    # Newer IDF export.sh requires this when invoked with an absolute path from
+    # a non-interactive shell. Older IDF versions ignore it.
+    os.environ["IDF_PATH_FORCE"] = "1"
+    revision = get_idf_revision(target)
+    print(f"ESP-IDF for {target}: {version} ({revision}, {idf_path})")
+    return version, idf_path, idf_tools_path
+
+
 def set_country_code():
     global COUNTRY_CODE
     if len(COUNTRY_CODE):
@@ -111,18 +155,40 @@ def do_subprocess(cmd: str) -> int:
     return ret
 
 
-def execute_idf_commands(root, cmd, directory) -> bool:
+def write_component_manifest(root, target):
+    """Materialize main/idf_component.yml for *target* from its IDF variant.
+
+    The component manifest cannot hold two versions of one dependency (YAML
+    duplicate keys), so each IDF environment keeps its own validated pin set
+    in idf_component.yml.<version>. Only rewrite when the content changes so
+    the component manager re-solves exactly on environment switches.
+    """
+    version = get_idf_version(target)
+    variant = os.path.join(root, "tuya_open_sdk", "main",
+                           f"idf_component.yml.{version}")
+    if not os.path.exists(variant):
+        return True
+
+    manifest = os.path.join(root, "tuya_open_sdk", "main", "idf_component.yml")
+    with open(variant, "r", encoding="utf-8") as f:
+        content = f.read()
+    if os.path.exists(manifest):
+        with open(manifest, "r", encoding="utf-8") as f:
+            if f.read() == content:
+                return True
+    with open(manifest, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"Component manifest for IDF {version}: {manifest}")
+    return True
+
+
+def execute_idf_commands(root, target, cmd, directory) -> bool:
     if not os.path.exists(directory):
         print(f"Error: Directory [{directory}] does not exist.")
         return False
-    idf_path = os.path.join(root, "esp-idf")
-    idf_tools_path = os.path.join(root, ".espressif")
-    os.environ["IDF_PATH"] = idf_path
-    os.environ["IDF_TOOLS_PATH"] = idf_tools_path
-    # IDF 6.x export.sh can't infer its location when sourced by /bin/sh with an
-    # absolute path ($0 is empty in dash) and then refuses the env IDF_PATH
-    # unless forced. Older export.sh ignores this variable.
-    os.environ["IDF_PATH_FORCE"] = "1"
+    _, idf_path, _ = export_idf_environment(root, target)
+    if not write_component_manifest(root, target):
+        return False
     if get_system_name() == "windows":
         export_bat = os.path.join(idf_path, "export.bat")
         command = f"{export_bat} && "
@@ -158,7 +224,7 @@ def set_target(root, chip, suffix="", flash_size=None):
     # --preview unlocks preview targets (esp32s31 is preview in IDF 6.x)
     cmd = f"idf.py --preview set-target {chip}"
     directory = os.path.join(root, "tuya_open_sdk")
-    if not execute_idf_commands(root, cmd, directory):
+    if not execute_idf_commands(root, chip, cmd, directory):
         return False
     sdkconfig = os.path.join(tuya_path, "sdkconfig")
     sdkconfig_old = os.path.join(tuya_path, "sdkconfig.old")
@@ -440,3 +506,18 @@ def build_git_command_with_jihu_mirror(cmds) -> str:
     print("Use jihulab mirror for current git command ...")
     _ensure_jihu_mirror()
     return _join_cmd(cmds)
+
+
+def build_git_command(cmds) -> str:
+    """Build a git command without applying the Jihu URL rewrite."""
+    return _join_cmd(cmds)
+
+
+def do_subprocess_without_jihu_mirror(cmd: str) -> int:
+    """Run a command against its original remote URL in this process."""
+    previous_config = os.environ.pop("GIT_CONFIG_GLOBAL", None)
+    try:
+        return do_subprocess(cmd)
+    finally:
+        if previous_config is not None:
+            os.environ["GIT_CONFIG_GLOBAL"] = previous_config

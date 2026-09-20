@@ -8,6 +8,7 @@
 #include "tkl_i2s.h"
 
 #include "esp_err.h"
+#include "esp_idf_version.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "driver/i2s_pdm.h"
@@ -124,7 +125,11 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *i2s_
         clk_pin, ws_pin, do_pin, di_pin, i2s_tx_hdl, i2s_rx_hdl);
 
     i2s_chan_config_t i2s_chan_cfg = {
-        .id = i2s_num, /* IDF 6.x: i2s_chan_config_t.id is a plain int (i2s_port_t is gone) */
+#if ESP_IDF_VERSION_MAJOR >= 6
+        .id = i2s_num,
+#else
+        .id = (i2s_port_t)i2s_num,
+#endif
         .role = I2S_ROLE_MASTER,
         .dma_desc_num = 6,
         .dma_frame_num = 240,

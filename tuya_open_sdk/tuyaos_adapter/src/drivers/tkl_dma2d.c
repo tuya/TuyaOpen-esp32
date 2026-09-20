@@ -14,6 +14,7 @@
 
 #include "tkl_dma2d.h"
 
+#include "esp_idf_version.h"
 #include "soc/soc_caps.h"
 
 #if defined(SOC_PPA_SUPPORTED) && SOC_PPA_SUPPORTED
@@ -52,6 +53,7 @@ static int __fmt_to_srm_cm(TUYA_FRAME_FMT_E fmt, ppa_srm_color_mode_t *cm, uint8
         *cm  = PPA_SRM_COLOR_MODE_RGB888;
         *bpp = 3;
         return 0;
+#if ESP_IDF_VERSION_MAJOR >= 6
     case TUYA_FRAME_FMT_YUV422:
         /* Tuya's generic YUV422 frame convention is UYVY.  On ESP32-S31
          * the PPA accepts UYVY as an SRM input and can convert it to RGB565
@@ -59,6 +61,7 @@ static int __fmt_to_srm_cm(TUYA_FRAME_FMT_E fmt, ppa_srm_color_mode_t *cm, uint8
         *cm  = PPA_SRM_COLOR_MODE_YUV422_UYVY;
         *bpp = 2;
         return 0;
+#endif
     default:
         return -1;
     }

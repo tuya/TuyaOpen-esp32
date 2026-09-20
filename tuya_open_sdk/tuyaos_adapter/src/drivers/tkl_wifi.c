@@ -15,6 +15,7 @@
 #include "esp_wifi_types.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
+#include "esp_idf_version.h"
 #include "esp_log.h"
 #include "freertos/event_groups.h"
 #include "esp_netif_defaults.h"
@@ -74,6 +75,14 @@ unsigned char s_wifi_macaddr[6] = { 0 };
 #define TKL_WIFI_PASSWD_LEN 64
 #define TKL_WIFI_PSK_LEN 32
 #define TKL_WIFI_LISTEN_INTERVAL_DEF 3
+
+#if ESP_IDF_VERSION_MAJOR >= 6
+#define TKL_WIFI_API_IF_AP  WIFI_IF_AP
+#define TKL_WIFI_API_IF_STA WIFI_IF_STA
+#else
+#define TKL_WIFI_API_IF_AP  ESP_IF_WIFI_AP
+#define TKL_WIFI_API_IF_STA ESP_IF_WIFI_STA
+#endif
 
 typedef struct {
     uint8_t             ssid[TKL_WIFI_SSID_LEN+1];
@@ -400,7 +409,7 @@ int tkl_wifi_get_mac(const WF_IF_E wf, NW_MAC_S *mac)
 {
     assert(NULL != mac);
 
-    if (ESP_OK != esp_wifi_get_mac(WF_AP == wf ? WIFI_IF_AP : WIFI_IF_STA, mac->mac)) {
+    if (ESP_OK != esp_wifi_get_mac(WF_AP == wf ? TKL_WIFI_API_IF_AP : TKL_WIFI_API_IF_STA, mac->mac)) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_get_mac failed(wf=%d)", __func__, wf);
         return OPRT_COM_ERROR;
     }
@@ -456,7 +465,7 @@ OPERATE_RET tkl_wifi_set_mac(const WF_IF_E wf, const NW_MAC_S *mac)
         return OPRT_COM_ERROR;
     }
 
-    ret = esp_wifi_set_mac((WF_AP == wf) ? WIFI_IF_AP : WIFI_IF_STA, mac->mac);
+    ret = esp_wifi_set_mac((WF_AP == wf) ? TKL_WIFI_API_IF_AP : TKL_WIFI_API_IF_STA, mac->mac);
     if (ESP_OK != ret) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_mac failed(ret=%d)", __func__, ret);
         return OPRT_COM_ERROR;
@@ -920,7 +929,7 @@ OPERATE_RET tkl_wifi_station_connect(const int8_t *ssid, const int8_t *passwd)
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
-    if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg)) {
+    if (ESP_OK != esp_wifi_set_config(TKL_WIFI_API_IF_STA, &wifi_cfg)) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }
@@ -1075,7 +1084,7 @@ OPERATE_RET tkl_wifi_start_ap(const WF_AP_CFG_IF_S *cfg)
         //ESP_LOGI(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
-    if (ESP_OK != esp_wifi_set_config(WIFI_IF_AP, &wifi_cfg)) {
+    if (ESP_OK != esp_wifi_set_config(TKL_WIFI_API_IF_AP, &wifi_cfg)) {
         //ESP_LOGI(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }
@@ -1234,7 +1243,7 @@ OPERATE_RET tkl_wifi_station_fast_connect(const FAST_WF_CONNECTED_AP_INFO_T *fas
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
-    if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg)) {
+    if (ESP_OK != esp_wifi_set_config(TKL_WIFI_API_IF_STA, &wifi_cfg)) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }

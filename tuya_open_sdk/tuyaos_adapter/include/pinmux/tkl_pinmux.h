@@ -31,7 +31,10 @@ typedef enum {
  * @param[in] pin: pin number
  * @param[in] pin_func: pin function
  *
- * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ * @note Call this before initializing the peripheral that owns pin_func.
+ * @return OPRT_OK on success; OPRT_INVALID_PARM for an invalid pin or an
+ *         explicitly configured output conflict; OPRT_NOT_SUPPORTED when the
+ *         function is unavailable on the current ESP32 target.
  */
 OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func);
 
@@ -40,6 +43,8 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func);
  * @param[in] cfg: pin cfg array
  * @param[in] num: num of pin cfg array
  * 
+ * @note The batch is validated as a whole. If validation fails, no route from
+ *       cfg is applied. Call this before initializing the affected peripheral.
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_multi_io_pinmux_config(TUYA_MUL_PIN_CFG_T *cfg, uint16_t num);
@@ -60,4 +65,3 @@ int32_t tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type);
 #endif
 
 #endif // __TKL_PINMUX_H__
-

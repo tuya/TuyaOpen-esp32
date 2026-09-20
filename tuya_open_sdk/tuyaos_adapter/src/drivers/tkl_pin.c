@@ -19,6 +19,7 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "hal/gpio_types.h"
+#include "soc/soc_caps.h"
 
 #include "tuya_error_code.h"
 #include "tuya_cloud_types.h"
@@ -30,60 +31,33 @@
 
 #define ESP_INTR_FLAG_DEFAULT 0
 
-#define PIN_DEV_CHECK_ERROR_RETURN(__PIN, __ERROR)                          \
-    if (__PIN >= sizeof(pinmap)/sizeof(pinmap[0])) {                        \
-        return __ERROR;                                                     \
-    }
-
 typedef void (*tuya_pin_irq_cb)(void *args);
 
 typedef struct {
-    int gpio;
     tuya_pin_irq_cb cb;
     void *args;
 } pin_dev_map_t;
 
+static bool __pin_is_valid(TUYA_GPIO_NUM_E pin)
+{
+    return pin < SOC_GPIO_PIN_COUNT && ((SOC_GPIO_VALID_GPIO_MASK & (1ULL << pin)) != 0);
+}
+
+static bool __pin_is_output_capable(TUYA_GPIO_NUM_E pin)
+{
+    return pin < SOC_GPIO_PIN_COUNT &&
+           ((SOC_GPIO_VALID_OUTPUT_GPIO_MASK & (1ULL << pin)) != 0);
+}
+
+#define PIN_DEV_CHECK_ERROR_RETURN(__PIN, __ERROR) \
+    if (!__pin_is_valid(__PIN)) {                  \
+        return __ERROR;                            \
+    }
+
 /* Flag to track if ISR service has been installed */
 static bool s_isr_service_installed = false;
 
-static pin_dev_map_t pinmap[] = {
-    {GPIO_NUM_0,  NULL, NULL}, {GPIO_NUM_1,  NULL, NULL}, {GPIO_NUM_2,  NULL, NULL}, {GPIO_NUM_3,  NULL, NULL},
-    {GPIO_NUM_4,  NULL, NULL}, {GPIO_NUM_5,  NULL, NULL}, {GPIO_NUM_6,  NULL, NULL}, {GPIO_NUM_7,  NULL, NULL},
-    {GPIO_NUM_8,  NULL, NULL}, {GPIO_NUM_9,  NULL, NULL}, {GPIO_NUM_10, NULL, NULL}, {GPIO_NUM_11, NULL, NULL},
-    {GPIO_NUM_12, NULL, NULL}, {GPIO_NUM_13, NULL, NULL}, {GPIO_NUM_14, NULL, NULL}, {GPIO_NUM_15, NULL, NULL},
-    {GPIO_NUM_16, NULL, NULL}, {GPIO_NUM_17, NULL, NULL}, {GPIO_NUM_18, NULL, NULL}, {GPIO_NUM_19, NULL, NULL},
-    {GPIO_NUM_20, NULL, NULL},
-
-    #if defined(CONFIG_IDF_TARGET_ESP32C3)
-    {GPIO_NUM_21, NULL, NULL},
-    #elif defined(CONFIG_IDF_TARGET_ESP32C6)
-    {GPIO_NUM_21, NULL, NULL}, {GPIO_NUM_22, NULL, NULL}, {GPIO_NUM_23, NULL, NULL}, {GPIO_NUM_24, NULL, NULL},
-    {GPIO_NUM_25, NULL, NULL}, {GPIO_NUM_26, NULL, NULL}, {GPIO_NUM_27, NULL, NULL}, {GPIO_NUM_28, NULL, NULL},
-    {GPIO_NUM_29, NULL, NULL}, {GPIO_NUM_30, NULL, NULL},
-    #elif defined(CONFIG_IDF_TARGET_ESP32)
-    {GPIO_NUM_21, NULL, NULL}, {GPIO_NUM_22, NULL, NULL}, {GPIO_NUM_23, NULL, NULL}, {GPIO_NUM_NC, NULL, NULL},
-    {GPIO_NUM_25, NULL, NULL}, {GPIO_NUM_26, NULL, NULL}, {GPIO_NUM_27, NULL, NULL}, {GPIO_NUM_28, NULL, NULL},
-    {GPIO_NUM_29, NULL, NULL}, {GPIO_NUM_30, NULL, NULL}, {GPIO_NUM_31, NULL, NULL}, {GPIO_NUM_32, NULL, NULL},
-    {GPIO_NUM_33, NULL, NULL}, {GPIO_NUM_34, NULL, NULL}, {GPIO_NUM_35, NULL, NULL}, {GPIO_NUM_36, NULL, NULL},
-    {GPIO_NUM_37, NULL, NULL}, {GPIO_NUM_38, NULL, NULL}, {GPIO_NUM_39, NULL, NULL},
-    #elif defined(CONFIG_IDF_TARGET_ESP32S2)
-    {GPIO_NUM_21, NULL, NULL}, {GPIO_NUM_NC, NULL, NULL}, {GPIO_NUM_NC, NULL, NULL}, {GPIO_NUM_NC, NULL, NULL},
-    {GPIO_NUM_NC, NULL, NULL}, {GPIO_NUM_26, NULL, NULL}, {GPIO_NUM_27, NULL, NULL}, {GPIO_NUM_28, NULL, NULL},
-    {GPIO_NUM_29, NULL, NULL}, {GPIO_NUM_30, NULL, NULL}, {GPIO_NUM_31, NULL, NULL}, {GPIO_NUM_32, NULL, NULL},
-    {GPIO_NUM_33, NULL, NULL}, {GPIO_NUM_34, NULL, NULL}, {GPIO_NUM_35, NULL, NULL}, {GPIO_NUM_36, NULL, NULL},
-    {GPIO_NUM_37, NULL, NULL}, {GPIO_NUM_38, NULL, NULL}, {GPIO_NUM_39, NULL, NULL}, {GPIO_NUM_40, NULL, NULL},
-    {GPIO_NUM_41, NULL, NULL}, {GPIO_NUM_42, NULL, NULL}, {GPIO_NUM_43, NULL, NULL},
-    {GPIO_NUM_44, NULL, NULL}, {GPIO_NUM_45, NULL, NULL}, {GPIO_NUM_46, NULL, NULL},
-    #elif defined(CONFIG_IDF_TARGET_ESP32S3)
-    {GPIO_NUM_21, NULL, NULL}, {GPIO_NUM_NC, NULL, NULL}, {GPIO_NUM_NC, NULL, NULL}, {GPIO_NUM_NC, NULL, NULL},
-    {GPIO_NUM_NC, NULL, NULL}, {GPIO_NUM_26, NULL, NULL}, {GPIO_NUM_27, NULL, NULL}, {GPIO_NUM_28, NULL, NULL},
-    {GPIO_NUM_29, NULL, NULL}, {GPIO_NUM_30, NULL, NULL}, {GPIO_NUM_31, NULL, NULL}, {GPIO_NUM_32, NULL, NULL},
-    {GPIO_NUM_33, NULL, NULL}, {GPIO_NUM_34, NULL, NULL}, {GPIO_NUM_35, NULL, NULL}, {GPIO_NUM_36, NULL, NULL},
-    {GPIO_NUM_37, NULL, NULL}, {GPIO_NUM_38, NULL, NULL}, {GPIO_NUM_39, NULL, NULL}, {GPIO_NUM_40, NULL, NULL},
-    {GPIO_NUM_41, NULL, NULL}, {GPIO_NUM_42, NULL, NULL}, {GPIO_NUM_43, NULL, NULL}, {GPIO_NUM_44, NULL, NULL},
-    {GPIO_NUM_45, NULL, NULL}, {GPIO_NUM_46, NULL, NULL}, {GPIO_NUM_47, NULL, NULL}, {GPIO_NUM_48, NULL, NULL},
-    #endif
-};
+static pin_dev_map_t pinmap[SOC_GPIO_PIN_COUNT];
 
 /**
  * @brief gpio init
@@ -97,14 +71,14 @@ static pin_dev_map_t pinmap[] = {
 OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cfg)
 {
     esp_err_t ret;
-    int gpio_num;
+    gpio_num_t gpio_num;
 
     if (NULL == cfg) {
         return OPRT_INVALID_PARM;
     }
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
-    gpio_num = pinmap[pin_id].gpio;
+    gpio_num = (gpio_num_t)pin_id;
 
     /* Zero-initialize the config structure, following ESP-IDF official example */
     gpio_config_t io_conf = {};
@@ -159,6 +133,11 @@ OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cf
         return OPRT_NOT_SUPPORTED;
     }
 
+    if ((io_conf.mode == GPIO_MODE_OUTPUT || io_conf.mode == GPIO_MODE_OUTPUT_OD) &&
+        !__pin_is_output_capable(pin_id)) {
+        return OPRT_INVALID_PARM;
+    }
+
     /* Configure GPIO with the given settings */
     ret = gpio_config(&io_conf);
     if (ESP_OK != ret) {
@@ -184,10 +163,10 @@ OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cf
  */
 OPERATE_RET tkl_gpio_write(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_LEVEL_E level)
 {
-    int gpio_num;
+    gpio_num_t gpio_num;
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
-    gpio_num = pinmap[pin_id].gpio;
+    gpio_num = (gpio_num_t)pin_id;
     gpio_set_level(gpio_num, level);
 
     return OPRT_OK;
@@ -203,14 +182,14 @@ OPERATE_RET tkl_gpio_write(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_LEVEL_E level)
  */
 OPERATE_RET tkl_gpio_read(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_LEVEL_E *level)
 {
-    int gpio_num;
+    gpio_num_t gpio_num;
 
     if (NULL == level) {
         return OPRT_INVALID_PARM;
     }
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
-    gpio_num = pinmap[pin_id].gpio;
+    gpio_num = (gpio_num_t)pin_id;
 
     *level = gpio_get_level(gpio_num);
     return OPRT_OK;
@@ -253,7 +232,7 @@ static esp_err_t __ensure_isr_service_installed(void)
  */
 OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_IRQ_T *cfg)
 {
-    int gpio_num;
+    gpio_num_t gpio_num;
     gpio_int_type_t trigger;
     esp_err_t ret;
 
@@ -265,7 +244,7 @@ OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_IRQ_T *cfg
 
     pinmap[pin_id].cb = cfg->cb;
     pinmap[pin_id].args = cfg->arg;
-    gpio_num = pinmap[pin_id].gpio;
+    gpio_num = (gpio_num_t)pin_id;
 
     /* Map TUYA IRQ mode to ESP-IDF interrupt type */
     switch (cfg->mode) {
@@ -353,11 +332,11 @@ OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_IRQ_T *cfg
  */
 OPERATE_RET tkl_gpio_irq_enable(TUYA_GPIO_NUM_E pin_id)
 {
-    int gpio_num;
+    gpio_num_t gpio_num;
     esp_err_t ret;
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
-    gpio_num = pinmap[pin_id].gpio;
+    gpio_num = (gpio_num_t)pin_id;
     ret = gpio_intr_enable(gpio_num);
     if (ESP_OK != ret) {
         ESP_LOGE(DBG_TAG, "%s: gpio_intr_enable failed(ret=%d)", __func__, ret);
@@ -376,10 +355,10 @@ OPERATE_RET tkl_gpio_irq_enable(TUYA_GPIO_NUM_E pin_id)
  */
 OPERATE_RET tkl_gpio_irq_disable(TUYA_GPIO_NUM_E pin_id)
 {
-    int gpio_num;
+    gpio_num_t gpio_num;
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
-    gpio_num = pinmap[pin_id].gpio;
+    gpio_num = (gpio_num_t)pin_id;
 
     gpio_intr_disable(gpio_num);
 
@@ -397,10 +376,10 @@ OPERATE_RET tkl_gpio_irq_disable(TUYA_GPIO_NUM_E pin_id)
  */
 OPERATE_RET tkl_gpio_deinit(TUYA_GPIO_NUM_E pin_id)
 {
-    int gpio_num;
+    gpio_num_t gpio_num;
 
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
-    gpio_num = pinmap[pin_id].gpio;
+    gpio_num = (gpio_num_t)pin_id;
 
     /* Disable interrupt first */
     gpio_intr_disable(gpio_num);

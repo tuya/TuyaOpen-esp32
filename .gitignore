@@ -1,4 +1,6 @@
 esp-idf
+esp-idf-v5.4
+esp-idf-master
 .espressif
 esp-gitee-tools
 tuya_open_sdk/build
@@ -17,3 +19,4 @@ dependencies.lock
 
 .mirror
 __pycache__
+tuya_open_sdk/main/idf_component.yml
