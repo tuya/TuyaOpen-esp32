@@ -11,6 +11,9 @@ file(GLOB_RECURSE SOURCES
 )
 
 if (CONFIG_ENABLE_AUDIO)
+    if(IDF_TARGET STREQUAL "esp32c2")
+        message(FATAL_ERROR "ESP32-C2 has no I2S peripheral; audio is not supported")
+    endif()
     file(GLOB_RECURSE SOURCES_AUDIO "${CMAKE_CURRENT_SOURCE_DIR}/src/audio/*.c")
     list(APPEND SOURCES ${SOURCES_AUDIO}
         "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_i2s.c"
@@ -87,8 +90,6 @@ set(adapter_requires
     esp_lcd_sh8601
     esp_io_expander_tca9554
     esp_io_expander
-    esp-sr
-    esp_codec_dev
     mbedtls
     nvs_flash
     bt
@@ -103,6 +104,13 @@ set(adapter_requires
     fatfs
     sdmmc
 )
+
+# esp-sr registers no component and esp_codec_dev needs SOC_I2S_SUPPORTED on
+# esp32c2, so requiring them there breaks the build; skip both the same way
+# main/idf_component.yml does.
+if(NOT IDF_TARGET STREQUAL "esp32c2")
+    list(APPEND adapter_requires esp-sr esp_codec_dev)
+endif()
 
 # esp32-camera DVP driver (ESP32 / ESP32-S3 only)
 if(IDF_TARGET STREQUAL "esp32s3" OR IDF_TARGET STREQUAL "esp32")

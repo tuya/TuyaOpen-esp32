@@ -32,7 +32,7 @@
   #define TKL_SPI_PORT_COUNT  2        /* FSPI=SPI2_HOST(IOMUX), SPI3=GPIO matrix */
   #define TKL_SPI_HOST0       SPI2_HOST
   #define TKL_SPI_HOST1       SPI3_HOST
-#elif defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6)
+#elif defined(CONFIG_IDF_TARGET_ESP32C2) || defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6)
   #define TKL_SPI_PORT_COUNT  1        /* only SPI2_HOST available */
   #define TKL_SPI_HOST0       SPI2_HOST
 #elif defined(CONFIG_IDF_TARGET_ESP32P4)
@@ -79,7 +79,7 @@ typedef struct {
 static TKL_ESP_SPI_CTX_T sg_spi[TUYA_SPI_NUM_MAX] = {
 #if TKL_SPI_PORT_COUNT >= 1
     /* IOMUX default pins — overridable via tkl_io_pinmux_config() */
-#if defined(CONFIG_IDF_TARGET_ESP32C3)
+#if defined(CONFIG_IDF_TARGET_ESP32C2) || defined(CONFIG_IDF_TARGET_ESP32C3)
     [TUYA_SPI_NUM_0] = { .mosi_io = TUYA_IO_PIN_7,  .miso_io = TUYA_IO_PIN_2,  .sclk_io = TUYA_IO_PIN_6,  .cs_io = TUYA_IO_PIN_10 },
 #elif defined(CONFIG_IDF_TARGET_ESP32C6)
     [TUYA_SPI_NUM_0] = { .mosi_io = TUYA_IO_PIN_7,  .miso_io = TUYA_IO_PIN_2,  .sclk_io = TUYA_IO_PIN_6,  .cs_io = TUYA_IO_PIN_16 },
