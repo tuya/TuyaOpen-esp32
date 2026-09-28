@@ -263,6 +263,9 @@ void __tkl_uart1_set_rxd_pin(TUYA_PIN_NAME_E pin)
 #if defined(CONFIG_IDF_TARGET_ESP32)
 static int sg_uart1_txd = GPIO_NUM_10;  /* IO_MUX native default */
 static int sg_uart1_rxd = GPIO_NUM_9;
+#elif defined(CONFIG_IDF_TARGET_ESP32C2)
+static int sg_uart1_txd = GPIO_NUM_9;   /* GPIO11-17 are SPI flash pins */
+static int sg_uart1_rxd = GPIO_NUM_8;
 #elif defined(CONFIG_IDF_TARGET_ESP32C6)
 static int sg_uart1_txd = GPIO_NUM_6;   /* avoids conflict with UART0 default RX GPIO17 */
 static int sg_uart1_rxd = GPIO_NUM_7;

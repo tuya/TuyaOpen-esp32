@@ -41,7 +41,15 @@ typedef struct {
 } SR_PWM_GPIO_T;
 
 static SR_PWM_GPIO_T sg_pwm_gpio_map[] = {
-#if defined(CONFIG_IDF_TARGET_ESP32C3)
+#if defined(CONFIG_IDF_TARGET_ESP32C2)
+    /* C2: GPIO range 0-20; GPIO11-17 are SPI flash, general pins are 0-10 and 18-20 */
+    {TUYA_IO_PIN_18, LEDC_CHANNEL_0},
+    {TUYA_IO_PIN_19, LEDC_CHANNEL_1},
+    {TUYA_IO_PIN_3,  LEDC_CHANNEL_2},
+    {TUYA_IO_PIN_4,  LEDC_CHANNEL_3},
+    {TUYA_IO_PIN_5,  LEDC_CHANNEL_4},
+    {TUYA_IO_PIN_6,  LEDC_CHANNEL_5},
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
     /* C3: GPIO range 0-21; GPIO12-17 are SPI flash, GPIO18-19 are USB-JTAG */
     {TUYA_IO_PIN_18, LEDC_CHANNEL_0},
     {TUYA_IO_PIN_19, LEDC_CHANNEL_1},

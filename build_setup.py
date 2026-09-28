@@ -10,6 +10,7 @@ from tools.prepare import platform_prepare, delete_temp_files
 
 SUPPORT_CHIPS = [
     "esp32",
+    "esp32c2",
     "esp32c3",
     "esp32s3",
     "esp32c6",
