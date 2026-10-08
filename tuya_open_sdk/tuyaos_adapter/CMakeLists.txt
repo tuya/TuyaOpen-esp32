@@ -41,6 +41,9 @@ list(APPEND SOURCES
 
 if(CONFIG_IDF_TARGET_ESP32S2)
     message(STATUS "ESP32S2 isn't support bluetooth")
+elseif(NOT CONFIG_BT_ENABLED)
+    # bt component (esp_bt.h) is absent when CONFIG_BT_ENABLED is off
+    message(STATUS "bluetooth disabled by sdkconfig, skip tkl_bt.c")
 else()
     list(APPEND SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/drivers/tkl_bt.c")
 endif()
