@@ -266,7 +266,13 @@ OPERATE_RET _tkl_wifi_all_ap_scan(int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num)
     memset(&scan_cfg, 0, sizeof(scan_cfg));
     scan_cfg.scan_type = WIFI_SCAN_TYPE_ACTIVE;
 
-    if (ESP_OK != esp_wifi_scan_start(&scan_cfg, TRUE)) {
+    esp_err_t ret = esp_wifi_scan_start(&scan_cfg, TRUE);
+    if (ESP_ERR_WIFI_NOT_STARTED == ret) {
+        if (ESP_OK == esp_wifi_start()) {
+            ret = esp_wifi_scan_start(&scan_cfg, TRUE);
+        }
+    }
+    if (ESP_OK != ret) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_scan_start failed", __func__);
         return OPRT_COM_ERROR;
     }
