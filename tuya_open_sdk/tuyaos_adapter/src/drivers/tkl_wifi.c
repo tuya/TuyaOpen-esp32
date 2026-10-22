@@ -36,6 +36,7 @@ static NW_IP_S wifi_sta_ip_addrs;
 static WF_STATION_STAT_E wifi_sta_conn_status = WSS_IDLE;
 static WIFI_EVENT_CB tkl_event_cb = NULL;
 static WF_WK_MD_E g_wifi_work_mode = WWM_UNKNOWN;
+static bool scan_only_apsta = false;
 static SNIFFER_CALLBACK tuya_sniffer_cb = NULL;
 static WIFI_REV_MGNT_CB mgnt_recv_cb = NULL;
 
@@ -141,6 +142,9 @@ static void tkl_wifi_event_handler(void* arg, esp_event_base_t event_base, int32
  
     if (WIFI_EVENT == event_base && WIFI_EVENT_STA_START == event_id) {
         //ESP_LOGI(DBG_TAG, "%s: recv event WIFI_EVENT_STA_START", __func__);
+        if (scan_only_apsta) {
+            return;
+        }
         ret = esp_wifi_connect();
         if (ESP_OK != ret) {
             ESP_LOGE(DBG_TAG, "%s: call esp_wifi_connect failed(ret=0x%x)", __func__, ret);
@@ -256,12 +260,20 @@ OPERATE_RET _tkl_wifi_all_ap_scan(int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num)
     AP_IF_S* ap_items = NULL;
     wifi_scan_config_t scan_cfg;
     wifi_ap_record_t *esp_scan_results;
+    wifi_mode_t wifi_mode = WIFI_MODE_MAX;
 
     assert(NULL != ap_ary);
     assert(NULL != num);
-    
+
     *num = 0;
     *ap_ary = NULL;
+
+    if (ESP_OK == esp_wifi_get_mode(&wifi_mode) && WIFI_MODE_AP == wifi_mode) {
+        scan_only_apsta = true;
+        if (ESP_OK == esp_wifi_set_mode(WIFI_MODE_APSTA)) {
+            g_wifi_work_mode = WWM_STATIONAP;
+        }
+    }
 
     memset(&scan_cfg, 0, sizeof(scan_cfg));
     scan_cfg.scan_type = WIFI_SCAN_TYPE_ACTIVE;
@@ -924,6 +936,7 @@ OPERATE_RET tkl_wifi_station_connect(const int8_t *ssid, const int8_t *passwd)
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }
+    scan_only_apsta = false;
     if (ESP_OK != esp_wifi_start()) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_start failed", __func__);
         return OPRT_COM_ERROR;
@@ -1238,6 +1251,7 @@ OPERATE_RET tkl_wifi_station_fast_connect(const FAST_WF_CONNECTED_AP_INFO_T *fas
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }
+    scan_only_apsta = false;
     if (ESP_OK != esp_wifi_start()) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_start failed", __func__);
         return OPRT_COM_ERROR;
