@@ -256,12 +256,19 @@ OPERATE_RET _tkl_wifi_all_ap_scan(int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num)
     AP_IF_S* ap_items = NULL;
     wifi_scan_config_t scan_cfg;
     wifi_ap_record_t *esp_scan_results;
+    wifi_mode_t wifi_mode = WIFI_MODE_MAX;
 
     assert(NULL != ap_ary);
     assert(NULL != num);
-    
+
     *num = 0;
     *ap_ary = NULL;
+
+    if (ESP_OK == esp_wifi_get_mode(&wifi_mode) && WIFI_MODE_AP == wifi_mode) {
+        if (ESP_OK == esp_wifi_set_mode(WIFI_MODE_APSTA)) {
+            g_wifi_work_mode = WWM_STATIONAP;
+        }
+    }
 
     memset(&scan_cfg, 0, sizeof(scan_cfg));
     scan_cfg.scan_type = WIFI_SCAN_TYPE_ACTIVE;
