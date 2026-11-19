@@ -285,7 +285,7 @@ TUYA_ERRNO tkl_net_shutdown(const int fd, const int how)
         return -3000 + fd;
     }
 
-    return shutdown(fd, how);
+    return lwip_shutdown(fd, how);
 }
 
 /**
@@ -303,13 +303,13 @@ int tkl_net_socket_create(const TUYA_PROTOCOL_TYPE_E type)
     
     switch (type) {
     case PROTOCOL_TCP:
-        fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+        fd = lwip_socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
         break;
     case PROTOCOL_UDP:
-        fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        fd = lwip_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         break;
     case PROTOCOL_RAW:
-        fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+        fd = lwip_socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
         break;
     default:
         printf("err unsupport tkl_net_socket_create type(%d), fd(%d)!\r\n",type, fd);
@@ -345,7 +345,7 @@ TUYA_ERRNO tkl_net_connect(const int fd, const TUYA_IP_ADDR_T addr, const unsign
     sock_addr.sin_port = htons(tmp_port);
     sock_addr.sin_addr.s_addr = htonl(tmp_addr);
 
-    return connect(fd, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
+    return lwip_connect(fd, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
 }
 
 /**
@@ -364,7 +364,7 @@ TUYA_ERRNO tkl_net_connect_raw(const int fd, void *p_socket_addr, const int len)
     if (fd < 0) {
         return -3000 + fd;
     }
-    return connect(fd, (struct sockaddr *)p_socket_addr, len);
+    return lwip_connect(fd, (struct sockaddr *)p_socket_addr, len);
 }
 
 /**
@@ -392,7 +392,7 @@ TUYA_ERRNO tkl_net_bind(const int fd, const TUYA_IP_ADDR_T addr, const unsigned 
     sock_addr.sin_port = htons(tmp_port);
     sock_addr.sin_addr.s_addr = htonl(tmp_addr);
 
-    return bind(fd, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
+    return lwip_bind(fd, (struct sockaddr *)&sock_addr, sizeof(struct sockaddr_in));
 }
 
 /**
@@ -410,7 +410,7 @@ TUYA_ERRNO tkl_net_listen(const int fd, const int backlog)
     if (fd < 0) {
         return -3000 + fd;
     }
-    return listen(fd, backlog);
+    return lwip_listen(fd, backlog);
 }
 
 /**
@@ -432,7 +432,7 @@ TUYA_ERRNO tkl_net_accept(const int fd, TUYA_IP_ADDR_T *addr, unsigned short *po
 
     struct sockaddr_in sock_addr;
     socklen_t len = sizeof(struct sockaddr_in);
-    int cfd = accept(fd, (struct sockaddr *)&sock_addr, &len);
+    int cfd = lwip_accept(fd, (struct sockaddr *)&sock_addr, &len);
     if (cfd < 0) {
         return OPRT_COM_ERROR;
     }
@@ -464,7 +464,7 @@ TUYA_ERRNO tkl_net_send(const int fd, const void *buf, const uint32_t nbytes)
     if ((fd < 0) || (buf == NULL) || (nbytes == 0)) {
         return -3000 + fd;
     }
-    return send(fd, buf, nbytes, 0);
+    return lwip_send(fd, buf, nbytes, 0);
 }
 
 /**
@@ -495,7 +495,7 @@ TUYA_ERRNO tkl_net_send_to(const int fd, const void *buf, const uint32_t nbytes,
     sock_addr.sin_port = htons(tmp_port);
     sock_addr.sin_addr.s_addr = htonl(tmp_addr);
     // return -1;
-    return sendto(fd, buf, nbytes, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
+    return lwip_sendto(fd, buf, nbytes, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
 }
 
 /**
@@ -527,7 +527,7 @@ TUYA_ERRNO tkl_net_recv(const int fd, void *buf, const uint32_t nbytes)
         }
     }
 
-    return recv(fd, buf, nbytes, 0);
+    return lwip_recv(fd, buf, nbytes, 0);
 }
 
 /**
@@ -556,7 +556,7 @@ int tkl_net_recv_nd_size(const int fd, \
     int ret = 0;
 
     while (rd_size < nd_size) {
-        ret = recv(fd, ((uint8_t *)buf + rd_size), nd_size - rd_size, 0);
+        ret = lwip_recv(fd, ((uint8_t *)buf + rd_size), nd_size - rd_size, 0);
         if (ret <= 0) {
             TUYA_ERRNO err = tkl_net_get_errno();
             if (EWOULDBLOCK == err || \
@@ -604,7 +604,7 @@ TUYA_ERRNO tkl_net_recvfrom(const int fd, \
 
     struct sockaddr_in sock_addr;
     socklen_t addr_len = sizeof(struct sockaddr_in);
-    int ret = recvfrom(fd, buf, nbytes, 0, (struct sockaddr *)&sock_addr, &addr_len);
+    int ret = lwip_recvfrom(fd, buf, nbytes, 0, (struct sockaddr *)&sock_addr, &addr_len);
     if (ret <= 0) {
         return ret;
     }
@@ -637,7 +637,7 @@ OPERATE_RET tkl_net_gethostbyname(const char *domain, TUYA_IP_ADDR_T *addr)
     }
 
     struct hostent *h = NULL;
-    if ((h = gethostbyname(domain)) == NULL) {
+    if ((h = lwip_gethostbyname(domain)) == NULL) {
         return OPRT_COM_ERROR;
     }
 
@@ -667,7 +667,7 @@ OPERATE_RET tkl_net_socket_bind(const int fd, const char *ip)
     addr_client.sin_addr.s_addr      = inet_addr(ip);
     addr_client.sin_port     = 0;    /// 0 表示由系统自动分配端口号
 
-    if (0 != bind(fd, (struct sockaddr *)&addr_client, sizeof(addr_client))) {
+    if (0 != lwip_bind(fd, (struct sockaddr *)&addr_client, sizeof(addr_client))) {
         return OPRT_COM_ERROR;
     }
 
@@ -767,7 +767,7 @@ OPERATE_RET tkl_net_setsockopt(const int fd, const TUYA_OPT_LEVEL level, const T
 {
     int ret = 0;
 
-    ret |= setsockopt(fd, level, optname, optval, optlen);
+    ret |= lwip_setsockopt(fd, level, optname, optval, optlen);
     return ret;
 }
 
@@ -787,7 +787,7 @@ OPERATE_RET tkl_net_setsockopt(const int fd, const TUYA_OPT_LEVEL level, const T
 OPERATE_RET tkl_net_getsockopt(const int fd, const TUYA_OPT_LEVEL level, const TUYA_OPT_NAME optname, void *optval, int *optlen)
 {
     int ret = 0;
-    ret = getsockopt(fd, level, optname, optval, (socklen_t *)optlen);
+    ret = lwip_getsockopt(fd, level, optname, optval, (socklen_t *)optlen);
 
     return ret;
 }
