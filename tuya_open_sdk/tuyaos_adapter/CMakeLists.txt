@@ -66,6 +66,8 @@ endmacro()
 
 FIND_INCLUDE_DIR(include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/include")
 list(APPEND include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/tuyaopen")
+# Core ops contracts used by tal_compat.h (core_kv_ops.h, etc.).
+list(APPEND include_dirs "${CMAKE_CURRENT_LIST_DIR}/../../../../tuyaopen-core/port/tuyaopen/interface")
 
 if(NOT "$ENV{TUYAOS_HEADER_DIR}" STREQUAL "")
 
@@ -149,6 +151,11 @@ idf_component_register(SRCS "${SOURCES}"
                     INCLUDE_DIRS "${include_dirs}"
                     REQUIRES ${adapter_requires}
                     )
+
+# Adapter and board TDD sources include the legacy tal_* headers; the aliases
+# to core_* live in tal_compat.h, which the TuyaOpen component build force-
+# includes but the ESP-IDF component build otherwise would not see.
+target_compile_options(${COMPONENT_LIB} PRIVATE -include tal_compat.h)
 
 if(CONFIG_IDF_TARGET_ESP32P4)
     target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=hci_rx_handler")

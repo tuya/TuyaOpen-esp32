@@ -29,11 +29,10 @@
  */
 void *tkl_system_malloc(size_t size)
 {
-#if defined(CONFIG_SPIRAM)
-    return heap_caps_malloc(size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-#else
+    /* Use the esp-idf default heap: small blocks stay in internal RAM and
+     * larger blocks use PSRAM according to CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL.
+     * tkl_system_free() uses free(), which releases both regions. */
     return malloc(size);
-#endif // CONFIG_SPIRAM
 }
 
 /**
