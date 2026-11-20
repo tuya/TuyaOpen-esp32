@@ -120,3 +120,31 @@ OPERATE_RET core_netif_esp_set_link_cb(CORE_NETIF_LINK_CHANGE_CB cb)
 
     return OPRT_OK;
 }
+
+OPERATE_RET core_netif_esp_foreach(CORE_NETIF_ADDR_CB cb, void *user_data)
+{
+    NW_IP_S           ip;
+    CORE_NETIF_ADDR_T addr;
+
+    if (NULL == cb) {
+        return OPRT_INVALID_PARM;
+    }
+    if ((OPRT_OK != core_netif_esp_get_ip(&ip)) || ('\0' == ip.ip[0])) {
+        return OPRT_COM_ERROR;
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    snprintf(addr.name, sizeof(addr.name), "%s", "sta");
+    snprintf(addr.ip, sizeof(addr.ip), "%s", ip.ip);
+    snprintf(addr.mask, sizeof(addr.mask), "%s", ip.mask);
+    snprintf(addr.gw, sizeof(addr.gw), "%s", ip.gw);
+    cb(&addr, user_data);
+
+    return OPRT_OK;
+}
+
+CORE_NETIF_OPS_T core_netif_ops_platform = {
+    .get_ip       = core_netif_esp_get_ip,
+    .set_link_cb  = core_netif_esp_set_link_cb,
+    .foreach_addr = core_netif_esp_foreach,
+};

@@ -1,9 +1,6 @@
-# Ops card component: builds core's port/tuyaopen/tuyaopen-core_ops.c (cards and
-# contract headers) plus the platform-local netif_esp.c (netif implementation;
-# esp32 has no tkl_wired).
+# ESP32 netif implementation (netif_esp.c). Shared core ops cards are built by
+# src/tuya_service/core_port.
 #
-# Core symbols come from the prebuilt libtuyaos.a (PLATFORM_NEED_LIBS); this
-# component provides the core_*_ops_platform instances referenced by core.
 # tuyaopen_license.c is built by the tuyaos_adapter component; the kv card is
 # provided by src/tuya_service/lib_kv.
 
@@ -13,7 +10,6 @@ set(TUYAOPEN_CORE_PORT_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../../../tuyaopen-co
 
 idf_component_register(
     SRCS
-        "${TUYAOPEN_CORE_PORT_DIR}/tuyaopen-core_ops.c"
         "${TUYAOPEN_DIR}/netif_esp.c"
     INCLUDE_DIRS
         "${TUYAOPEN_DIR}"
@@ -21,7 +17,7 @@ idf_component_register(
         "${TUYAOPEN_DIR}/include/common"
         "${TUYAOPEN_DIR}/include/system"
     REQUIRES
-        # platform tkl headers used by the card members
+        # platform tkl headers used by the netif implementation
         tuyaos_adapter
         esp_wifi
         esp_event
@@ -32,20 +28,6 @@ idf_component_register(
         esp_partition
         app_update
         mbedtls
-    # The card instances must always be linked: libtuyaos.a (prebuilt, later on
-    # the link line) references core_*_ops_platform, and this component library
-    # is scanned before any reference is pending. WHOLE_ARCHIVE keeps all of
-    # its objects in the link.
+    # Keep netif_esp.o linked for libtuyaos.a's references.
     WHOLE_ARCHIVE
 )
-
-# tuyaopen-core_ops.c selects the Bluetooth ops members with ENABLE_BLUETOOTH;
-# without it the shared card is compiled as an all-NULL stub and BLE netcfg
-# fails with "operation gap_callback_register not available". The controller is
-# enabled through ESP-IDF's sdkconfig, while the bundled NimBLE host and its
-# TKL BLE port are built by src/tuya_service/tal_bluetooth.
-if(CONFIG_BT_ENABLED)
-    target_compile_definitions(${COMPONENT_LIB} PRIVATE
-        ENABLE_BLUETOOTH=1
-        TUYAOPEN_HAS_TKL_BLE=1)
-endif()

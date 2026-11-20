@@ -1,6 +1,9 @@
 #ifndef __TKL_BLUETOOTH_H__
 #define __TKL_BLUETOOTH_H__
 
+/* Platform implements the TKL BLE GAP/GATT API used by core's BLE ops card. */
+#define TUYAOPEN_HAS_TKL_BLE 1
+
 #include "tkl_bluetooth_def.h"
 
 #ifdef __cplusplus
