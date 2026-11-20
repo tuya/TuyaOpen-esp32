@@ -4,11 +4,10 @@ list_subdirectories(PLATFORM_PUBINC_1 ${PLATFORM_PATH}/tuya_open_sdk/tuyaos_adap
 # INT_T / OPERATE_RET; put the tuyaopen/include/common copy first.
 list(INSERT PLATFORM_PUBINC_1 0 "${CMAKE_CURRENT_LIST_DIR}/tuya_open_sdk/tuyaos_adapter/tuyaopen/include/common")
 
-# Ops contract headers shared by core and the port.
-list(APPEND PLATFORM_PUBINC_1 "${TOP_SOURCE_DIR}/tuyaopen-core/port/tuyaopen/interface")
-
-
 include(${TOP_SOURCE_DIR}/boards/ESP32/common/CMakeLists.txt)
+
+# This platform implements the TKL file system API used by core's FS ops card.
+add_definitions(-DTUYAOPEN_HAS_TKL_FS=1)
 
 set(ENV_IDF_PATH $ENV{IDF_PATH})
 set(IDF_PATH "${PLATFORM_PATH}/esp-idf")
