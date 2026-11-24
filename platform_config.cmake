@@ -15,6 +15,20 @@ if(ENV_IDF_PATH)
     set(IDF_PATH ${ENV_IDF_PATH})
 endif()
 message(STATUS "IDF_TOOLS_PATH: ${IDF_TOOLS_PATH}")
+
+if(TOS_PROJECT_CHIP STREQUAL "esp32" OR TOS_PROJECT_CHIP STREQUAL "esp32s2" OR TOS_PROJECT_CHIP STREQUAL "esp32s3")
+    set(ESP32_ARCH "xtensa")
+    set(ESP32_ARCH_INC
+        ${IDF_PATH}/components/xtensa/include
+        ${IDF_PATH}/components/xtensa/${TOS_PROJECT_CHIP}/include
+    )
+else()
+    set(ESP32_ARCH "riscv")
+    set(ESP32_ARCH_INC
+        ${IDF_PATH}/components/riscv/include
+    )
+endif()
+
 set(PLATFORM_PUBINC_2
     ${IDF_PATH}/components/mbedtls/mbedtls/include
     ${IDF_PATH}/components/mbedtls/port/include
@@ -31,15 +45,14 @@ set(PLATFORM_PUBINC_2
     ${IDF_PATH}/components/newlib/platform_include
     ${IDF_PATH}/components/esp_system/include
     ${IDF_PATH}/components/esp_hw_support/include
-    ${IDF_PATH}/components/xtensa/include
-    ${IDF_PATH}/components/xtensa/${TOS_PROJECT_CHIP}/include
+    ${ESP32_ARCH_INC}
     ${IDF_PATH}/components/freertos/FreeRTOS-Kernel/include
-    ${IDF_PATH}/components/freertos/FreeRTOS-Kernel/portable/xtensa/include
-    ${IDF_PATH}/components/freertos/FreeRTOS-Kernel/portable/xtensa/include/freertos
+    ${IDF_PATH}/components/freertos/FreeRTOS-Kernel/portable/${ESP32_ARCH}/include
+    ${IDF_PATH}/components/freertos/FreeRTOS-Kernel/portable/${ESP32_ARCH}/include/freertos
     ${IDF_PATH}/components/freertos/config/include
     ${IDF_PATH}/components/freertos/config/include/freertos
-    ${IDF_PATH}/components/freertos/config/xtensa/include
-    ${IDF_PATH}/components/freertos/config/xtensa/include/freertos
+    ${IDF_PATH}/components/freertos/config/${ESP32_ARCH}/include
+    ${IDF_PATH}/components/freertos/config/${ESP32_ARCH}/include/freertos
     ${IDF_PATH}/components/freertos/esp_additions/include
     ${IDF_PATH}/components/freertos/esp_additions/include/freertos
     ${IDF_PATH}/components/heap/include
