@@ -38,6 +38,7 @@ static WIFI_EVENT_CB tkl_event_cb = NULL;
 static WF_WK_MD_E g_wifi_work_mode = WWM_UNKNOWN;
 static SNIFFER_CALLBACK tuya_sniffer_cb = NULL;
 static WIFI_REV_MGNT_CB mgnt_recv_cb = NULL;
+static bool s_sta_connect_pending = false;
 
 static wifi_country_t cc_tbls[] = {
     {.cc = "CN", .schan = 1, .nchan = 13, .policy = WIFI_COUNTRY_POLICY_MANUAL },
@@ -141,11 +142,14 @@ static void tkl_wifi_event_handler(void* arg, esp_event_base_t event_base, int32
  
     if (WIFI_EVENT == event_base && WIFI_EVENT_STA_START == event_id) {
         //ESP_LOGI(DBG_TAG, "%s: recv event WIFI_EVENT_STA_START", __func__);
-        ret = esp_wifi_connect();
-        if (ESP_OK != ret) {
-            ESP_LOGE(DBG_TAG, "%s: call esp_wifi_connect failed(ret=0x%x)", __func__, ret);
-        } else {
-            wifi_sta_conn_status = WSS_CONNECTING;
+        if (s_sta_connect_pending) {
+            s_sta_connect_pending = false;
+            ret = esp_wifi_connect();
+            if (ESP_OK != ret) {
+                ESP_LOGE(DBG_TAG, "%s: call esp_wifi_connect failed(ret=0x%x)", __func__, ret);
+            } else {
+                wifi_sta_conn_status = WSS_CONNECTING;
+            }
         }
     } else if (WIFI_EVENT == event_base && WIFI_EVENT_STA_CONNECTED == event_id) {
         //ESP_LOGI(DBG_TAG, "%s: recv event WIFI_EVENT_STA_CONNECTED", __func__);
@@ -188,15 +192,8 @@ static void tkl_wifi_event_handler(void* arg, esp_event_base_t event_base, int32
         //    s_wifi_reconn_retries++;
         //}
     } else if (WIFI_EVENT == event_base && WIFI_EVENT_SCAN_DONE == event_id) {
-        esp_wifi_scan_get_ap_num(&ssid_num);
-        if (!ssid_num) {
-            wifi_sta_conn_status = WSS_NO_AP_FOUND;
-            TKL_WIFI_STA_IP_ADDRS_INIT(wifi_sta_ip_addrs);
-            if (tkl_event_cb && s_wifi_sta_conne_evt_state != WFE_CONNECT_FAILED) {
-                tkl_event_cb(WFE_CONNECT_FAILED, NULL);
-            }
-        }
-        //ESP_LOGI(DBG_TAG, "%s: recv event WIFI_EVENT_SCAN_DONE ssid_num %d", __func__, ssid_num);
+        (void)ssid_num;
+        //ESP_LOGI(DBG_TAG, "%s: recv event WIFI_EVENT_SCAN_DONE", __func__);
     } else if (WIFI_EVENT == event_base && WIFI_EVENT_STA_AUTHMODE_CHANGE == event_id) {    
         //ESP_LOGI(DBG_TAG, "%s: recv event WIFI_EVENT_STA_AUTHMODE_CHANGE", __func__);
         if (tkl_event_cb && s_wifi_sta_conne_evt_state != WFE_DISCONNECTED) {
@@ -249,14 +246,40 @@ static void tkl_wifi_event_handler(void* arg, esp_event_base_t event_base, int32
     }
 }
 
+static uint8_t _esp_authmode_to_ty(wifi_auth_mode_t authmode)
+{
+    switch (authmode) {
+    case WIFI_AUTH_OPEN:
+        return WAAM_OPEN;
+    case WIFI_AUTH_WEP:
+        return WAAM_WEP;
+    case WIFI_AUTH_WPA_PSK:
+        return WAAM_WPA_PSK;
+    case WIFI_AUTH_WPA2_PSK:
+        return WAAM_WPA2_PSK;
+    case WIFI_AUTH_WPA_WPA2_PSK:
+        return WAAM_WPA_WPA2_PSK;
+    case WIFI_AUTH_WPA3_PSK:
+    case WIFI_AUTH_WPA2_WPA3_PSK:
+    case WIFI_AUTH_WPA3_EXT_PSK:
+    case WIFI_AUTH_WPA3_EXT_PSK_MIXED_MODE:
+        return WAAM_WPA_WPA3_SAE;
+    default:
+        return WAAM_UNKNOWN;
+    }
+}
+
 OPERATE_RET _tkl_wifi_all_ap_scan(int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num)
 {
     int i, total;
     uint16_t numbers = 0;
-    AP_IF_S* ap_items = NULL;
+    AP_IF_S *ap_items = NULL;
     wifi_scan_config_t scan_cfg;
-    wifi_ap_record_t *esp_scan_results;
+    wifi_ap_record_t *esp_scan_results = NULL;
     wifi_mode_t wifi_mode = WIFI_MODE_MAX;
+    esp_err_t err = ESP_OK;
+    bool started_for_scan = false;
+    OPERATE_RET op_ret = OPRT_OK;
 
     assert(NULL != ap_ary);
     assert(NULL != num);
@@ -264,67 +287,102 @@ OPERATE_RET _tkl_wifi_all_ap_scan(int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num)
     *num = 0;
     *ap_ary = NULL;
 
-    if (ESP_OK == esp_wifi_get_mode(&wifi_mode) && WIFI_MODE_AP == wifi_mode) {
-        if (ESP_OK == esp_wifi_set_mode(WIFI_MODE_APSTA)) {
-            g_wifi_work_mode = WWM_STATIONAP;
+    if (ESP_OK == esp_wifi_get_mode(&wifi_mode)) {
+        if (WIFI_MODE_AP == wifi_mode) {
+            if (ESP_OK == esp_wifi_set_mode(WIFI_MODE_APSTA)) {
+                g_wifi_work_mode = WWM_STATIONAP;
+            }
+        } else if (WIFI_MODE_NULL == wifi_mode) {
+            if (ESP_OK == esp_wifi_set_mode(WIFI_MODE_STA)) {
+                g_wifi_work_mode = WWM_STATION;
+            }
         }
     }
 
     memset(&scan_cfg, 0, sizeof(scan_cfg));
     scan_cfg.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+    if (ssid && ssid[0] != '\0') {
+        scan_cfg.ssid = (uint8_t *)ssid;
+        scan_cfg.show_hidden = true;
+    }
 
-    if (ESP_OK != esp_wifi_scan_start(&scan_cfg, TRUE)) {
-        //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_scan_start failed", __func__);
-        return OPRT_COM_ERROR;
+    err = esp_wifi_scan_start(&scan_cfg, TRUE);
+    if (ESP_ERR_WIFI_NOT_STARTED == err) {
+        if (ESP_OK == esp_wifi_start()) {
+            started_for_scan = true;
+            err = esp_wifi_scan_start(&scan_cfg, TRUE);
+        }
+    }
+    if (ESP_OK != err) {
+        ESP_LOGE(DBG_TAG, "%s: call esp_wifi_scan_start failed(err=0x%x)", __func__, err);
+        op_ret = OPRT_COM_ERROR;
+        goto __exit;
     }
 
     if (ESP_OK != esp_wifi_scan_get_ap_num(&numbers)) {
-        //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_scan_get_ap_num failed", __func__);
-        return OPRT_COM_ERROR;
+        ESP_LOGE(DBG_TAG, "%s: call esp_wifi_scan_get_ap_num failed", __func__);
+        op_ret = OPRT_COM_ERROR;
+        goto __exit;
+    }
+
+    if (0 == numbers) {
+        goto __exit;
     }
 
     esp_scan_results = (wifi_ap_record_t *)tkl_system_malloc(numbers * sizeof(wifi_ap_record_t));
     if (NULL == esp_scan_results) {
-        //ESP_LOGE(DBG_TAG, "%s: malloc memory failed", __func__);
-        return OPRT_COM_ERROR;
+        ESP_LOGE(DBG_TAG, "%s: malloc memory failed", __func__);
+        op_ret = OPRT_COM_ERROR;
+        goto __exit;
     }
 
     memset(esp_scan_results, 0, numbers * sizeof(wifi_ap_record_t));
     if (ESP_OK != esp_wifi_scan_get_ap_records(&numbers, esp_scan_results)) {
-        tkl_system_free(esp_scan_results);
-        //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_scan_get_ap_records failed", __func__);
-        return OPRT_COM_ERROR;
+        ESP_LOGE(DBG_TAG, "%s: call esp_wifi_scan_get_ap_records failed", __func__);
+        op_ret = OPRT_COM_ERROR;
+        goto __exit;
     }
 
     ap_items = (AP_IF_S *)tkl_system_malloc(numbers * sizeof(AP_IF_S));
     if (NULL == ap_items) {
-        tkl_system_free(esp_scan_results);
-        //ESP_LOGE(DBG_TAG, "%s: malloc memory for ap info failed", __func__);
-        return OPRT_COM_ERROR;
+        ESP_LOGE(DBG_TAG, "%s: malloc memory for ap info failed", __func__);
+        op_ret = OPRT_COM_ERROR;
+        goto __exit;
     }
 
     memset(ap_items, 0, numbers * sizeof(AP_IF_S));
     for (i = 0, total = 0; i < numbers; i++) {
-        if (ssid && !strncmp((char *)ssid, (char *)esp_scan_results[i].ssid, strlen((char *)ssid))) {
+        if (ssid && ssid[0] != '\0' && strcmp((char *)ssid, (char *)esp_scan_results[i].ssid) != 0) {
             continue;
         }
-        ap_items[i].channel = esp_scan_results[i].primary;
-        ap_items[i].rssi = esp_scan_results[i].rssi;
-        ap_items[i].security = esp_scan_results[i].authmode;
-        ap_items[i].s_len = strlen((char *)esp_scan_results[i].ssid);
-        memcpy(ap_items[i].ssid, esp_scan_results[i].ssid, ap_items[i].s_len);
-        memcpy(ap_items[i].bssid, esp_scan_results[i].bssid, 6);
+        size_t slen = strnlen((const char *)esp_scan_results[i].ssid, WIFI_SSID_LEN);
+        ap_items[total].channel = esp_scan_results[i].primary;
+        ap_items[total].rssi = esp_scan_results[i].rssi;
+        ap_items[total].security = _esp_authmode_to_ty(esp_scan_results[i].authmode);
+        ap_items[total].s_len = (uint8_t)slen;
+        memcpy(ap_items[total].ssid, esp_scan_results[i].ssid, slen);
+        ap_items[total].ssid[slen] = '\0';
+        memcpy(ap_items[total].bssid, esp_scan_results[i].bssid, 6);
         total++;
-        //ESP_LOGE(DBG_TAG, "%s: ssid %s bssid "MACSTR" chan %d sec %d rssi %d",
-        //    __func__, ap_items[i].ssid, MAC2STR(ap_items[i].bssid), ap_items[i].channel, 
-        //    ap_items[i].security, ap_items[i].rssi);
     }
 
-    *ap_ary = ap_items;
-    *num = total;
+    if (total > 0) {
+        *ap_ary = ap_items;
+        *num = total;
+        ap_items = NULL;
+    }
 
-    tkl_system_free(esp_scan_results);
-    return OPRT_OK;
+__exit:
+    if (ap_items) {
+        tkl_system_free(ap_items);
+    }
+    if (esp_scan_results) {
+        tkl_system_free(esp_scan_results);
+    }
+    if (started_for_scan) {
+        esp_wifi_stop();
+    }
+    return op_ret;
 }
 
 /**
@@ -927,11 +985,14 @@ OPERATE_RET tkl_wifi_station_connect(const int8_t *ssid, const int8_t *passwd)
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
+    g_wifi_work_mode = WWM_STATION;
     if (ESP_OK != esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_cfg)) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }
+    s_sta_connect_pending = true;
     if (ESP_OK != esp_wifi_start()) {
+        s_sta_connect_pending = false;
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_start failed", __func__);
         return OPRT_COM_ERROR;
     }
@@ -957,6 +1018,7 @@ OPERATE_RET tkl_wifi_station_disconnect(void)
 {
     esp_err_t ret;
 
+    s_sta_connect_pending = false;
     ret = esp_wifi_disconnect();
     if (ESP_OK != ret) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_disconnect failed(ret=%d)", __func__, ret);
@@ -1082,6 +1144,7 @@ OPERATE_RET tkl_wifi_start_ap(const WF_AP_CFG_IF_S *cfg)
         //ESP_LOGI(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
+    g_wifi_work_mode = WWM_SOFTAP;
     if (ESP_OK != esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_cfg)) {
         //ESP_LOGI(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
@@ -1241,11 +1304,14 @@ OPERATE_RET tkl_wifi_station_fast_connect(const FAST_WF_CONNECTED_AP_INFO_T *fas
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_mode failed", __func__);
         return OPRT_COM_ERROR;
     }
+    g_wifi_work_mode = WWM_STATION;
     if (ESP_OK != esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_cfg)) {
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_set_config failed", __func__);
         return OPRT_COM_ERROR;
     }
+    s_sta_connect_pending = true;
     if (ESP_OK != esp_wifi_start()) {
+        s_sta_connect_pending = false;
         //ESP_LOGE(DBG_TAG, "%s: call esp_wifi_start failed", __func__);
         return OPRT_COM_ERROR;
     }
